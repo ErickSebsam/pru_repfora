@@ -215,8 +215,6 @@ REPFORA/
 frontend/
 utils/uploadFiles/*.json
 
-# Migration scripts (local only)
-scripts/
 
 # Temporary test scripts
 test_*.js
