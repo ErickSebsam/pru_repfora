@@ -12,6 +12,10 @@ const activityTemplateSchema = new mongoose.Schema({
     type: { type: String },
     materials: [String]
   },
+  // cambion efectuado por luis llanos
+  materials: [String],
+  trainingMaterials: [String],
+  learningEnvironment: { type: String },
   observations: { type: String },
   isScheduledInCalendar: { type: Boolean, default: false },
   suggestedInstructor: {

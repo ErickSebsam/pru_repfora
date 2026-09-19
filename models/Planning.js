@@ -12,6 +12,10 @@ const activitySchema = new mongoose.Schema({
     type: { type: String },
     materials: [String]
   },
+  // cambion efectuado por luis llanos
+  materials: [String],
+  trainingMaterials: [String],
+  learningEnvironment: { type: String },
   observations: { type: String },
   // implementacion de luis llanos (definicion de esquema para persistencia de comentarios en actividades)
   comments: [
@@ -62,17 +66,7 @@ const activitySchema = new mongoose.Schema({
     hoursPerDay: { type: Number },
     calendarNotes: { type: String },
     isPublished: { type: Boolean, default: false }
-  },
-  // Modificación hecha por Llanos: Soporte de persistencia en MongoDB para comentarios y revisión
-  reviewed: { type: Boolean, default: false },
-  comments: [{
-    id: { type: String },
-    text: { type: String },
-    author: { type: String },
-    authorEmail: { type: String },
-    role: { type: String },
-    createdAt: { type: Date, default: Date.now }
-  }]
+  }
 }, { _id: false });
 
 const rapSchema = new mongoose.Schema({

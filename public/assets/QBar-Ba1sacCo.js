@@ -1,0 +1,1 @@
+import{Ht as e,Nt as t,Wt as n,_t as r,n as i,t as a,yt as o}from"./use-dark-PFvCya13.js";var s=o({name:`QBar`,props:{...i,dense:Boolean},setup(i,{slots:o}){let{proxy:{$q:s}}=e(),c=a(i,s),l=t(()=>`q-bar row no-wrap items-center q-bar--${i.dense?`dense`:`standard`}  q-bar--${c.value?`dark`:`light`}`);return()=>n(`div`,{class:l.value,role:`toolbar`},r(o.default))}});export{s as t};

@@ -341,23 +341,28 @@ const fillMissingIntoExistingPlanning = (existingPlanning, planningData) => {
           });
         }
 
-        // completar materiales y ambiente en environment si estaban vacíos en actividades existentes
+        // cambion efectuado por luis llanos: completar materiales y ambiente si estaban vacíos en actividades existentes
         exActs.forEach((exAct, actIdx) => {
           const correspondingInAct = inActs[actIdx] || inActs[0];
           if (correspondingInAct) {
-            const inMats = correspondingInAct.environment?.materials || correspondingInAct.trainingMaterials || correspondingInAct.materials || [];
-            if (!exAct.environment) exAct.environment = { type: '', materials: [] };
-            if ((!exAct.environment.materials || exAct.environment.materials.length === 0) && inMats.length > 0) {
+            const inMats = correspondingInAct.trainingMaterials || correspondingInAct.materials || correspondingInAct.environment?.materials || [];
+            if ((!exAct.materials || exAct.materials.length === 0) && inMats.length > 0) {
+              exAct.materials = JSON.parse(JSON.stringify(inMats));
+            }
+            if ((!exAct.trainingMaterials || exAct.trainingMaterials.length === 0) && inMats.length > 0) {
+              exAct.trainingMaterials = JSON.parse(JSON.stringify(inMats));
+            }
+            if ((!exAct.environment?.materials || exAct.environment.materials.length === 0) && inMats.length > 0) {
+              if (!exAct.environment) exAct.environment = { type: '', materials: [] };
               exAct.environment.materials = JSON.parse(JSON.stringify(inMats));
             }
-            const inType = correspondingInAct.environment?.type || correspondingInAct.learningEnvironment || '';
-            if (isEmptyValue(exAct.environment?.type) && !isEmptyValue(inType)) {
-              exAct.environment.type = inType;
+            if (isEmptyValue(exAct.environment?.type) && !isEmptyValue(correspondingInAct.environment?.type)) {
+              if (!exAct.environment) exAct.environment = { type: '', materials: [] };
+              exAct.environment.type = correspondingInAct.environment.type;
             }
-            // Eliminar campos obsoletos fuera de environment
-            delete exAct.materials;
-            delete exAct.trainingMaterials;
-            delete exAct.learningEnvironment;
+            if (isEmptyValue(exAct.learningEnvironment) && !isEmptyValue(correspondingInAct.learningEnvironment)) {
+              exAct.learningEnvironment = correspondingInAct.learningEnvironment;
+            }
           }
         });
 
@@ -513,12 +518,9 @@ export const uploadPlanning = async (req, res) => {
                     existingAct.didacticStrategies = incomingAct.didacticStrategies || [];
                     existingAct.learningEvidences = incomingAct.learningEvidences || [];
                     existingAct.environment = {
-                      type: incomingAct.environment?.type || incomingAct.learningEnvironment || existingAct.environment?.type || '',
-                      materials: incomingAct.environment?.materials || incomingAct.trainingMaterials || incomingAct.materials || existingAct.environment?.materials || []
+                      type: incomingAct.environment?.type || '',
+                      materials: incomingAct.environment?.materials || []
                     };
-                    delete existingAct.materials;
-                    delete existingAct.trainingMaterials;
-                    delete existingAct.learningEnvironment;
                     if (incomingAct.observations !== undefined) {
                       existingAct.observations = incomingAct.observations;
                     }
@@ -528,6 +530,16 @@ export const uploadPlanning = async (req, res) => {
                     }
                     if (incomingAct.isScheduledInCalendar !== undefined) {
                       existingAct.isScheduledInCalendar = incomingAct.isScheduledInCalendar;
+                    }
+                    // cambion efectuado por luis llanos
+                    if (incomingAct.materials !== undefined) {
+                      existingAct.materials = incomingAct.materials;
+                    }
+                    if (incomingAct.trainingMaterials !== undefined) {
+                      existingAct.trainingMaterials = incomingAct.trainingMaterials;
+                    }
+                    if (incomingAct.learningEnvironment !== undefined) {
+                      existingAct.learningEnvironment = incomingAct.learningEnvironment;
                     }
                     // implementacion de luis llanos (preservar comentarios en la actualizacion segura de actividades)
                     if (incomingAct.comments !== undefined) {
@@ -824,16 +836,13 @@ export const extractFromPDFs = async (req, res) => {
                   comp.learningOutcomes.forEach(rap => {
                     if (rap.pedagogicalActivities) {
                       rap.pedagogicalActivities.forEach(act => {
-                        const mats = act.environment?.materials || act.trainingMaterials || act.materials || [];
-                        const envType = act.environment?.type || act.learningEnvironment || '';
-                        if (!act.environment) act.environment = { type: '', materials: [] };
-                        act.environment.type = envType;
+                        const mats = act.trainingMaterials || act.materials || act.environment?.materials || [];
                         if (mats.length > 0) {
+                          act.materials = mats;
+                          act.trainingMaterials = mats;
+                          if (!act.environment) act.environment = { type: '', materials: [] };
                           act.environment.materials = mats;
                         }
-                        delete act.materials;
-                        delete act.trainingMaterials;
-                        delete act.learningEnvironment;
                       });
                     }
                   });
@@ -864,115 +873,17 @@ export const extractFromPDFs = async (req, res) => {
             }
 
             // Traer los datos del programa registrados en la base de datos si faltan
-            // o si el extractor dejó placeholders ("PROGRAMA" / "000000") porque el
-            // PDF del programa no se pudo interpretar.
             if (dbFiche.program) {
               const dbProgram = await Program.findById(dbFiche.program).lean();
               if (dbProgram) {
                 if (!planningData.pedagogicalPlanning.metadata) {
                   planningData.pedagogicalPlanning.metadata = {};
                 }
-
-                const isPlaceholderMetadata = (value) =>
-                  isEmptyValue(value)
-                  || String(value).trim().toUpperCase() === 'PROGRAMA'
-                  || String(value).trim() === '000000';
-
-                if (isPlaceholderMetadata(planningData.pedagogicalPlanning.metadata.programCode) && dbProgram.code) {
+                if (!planningData.pedagogicalPlanning.metadata.programCode && dbProgram.code) {
                   planningData.pedagogicalPlanning.metadata.programCode = dbProgram.code;
                 }
-                if (isPlaceholderMetadata(planningData.pedagogicalPlanning.metadata.programName) && dbProgram.name) {
+                if (!planningData.pedagogicalPlanning.metadata.programName && dbProgram.name) {
                   planningData.pedagogicalPlanning.metadata.programName = dbProgram.name;
-                }
-                if (isEmptyValue(planningData.pedagogicalPlanning.metadata.version) && dbProgram.version) {
-                  planningData.pedagogicalPlanning.metadata.version = dbProgram.version;
-                }
-
-                // Corregir con la BD los nombres de competencias que el extractor
-                // dejó en blanco o como basura (ej. "COMPETENCIA 240201500",
-                // "VERSIÓN DE") cuando el PDF del programa no se pudo leer bien.
-                // Se cruza por código, por nombre y por las descripciones de los
-                // RAPs contra los resultados de aprendizaje de la BD.
-                const dbCompetences = await Competence.find({ program: dbProgram._id }).lean();
-                if (dbCompetences.length > 0) {
-                  const dbOutcomesByComp = {};
-                  await Promise.all(dbCompetences.map(async (dbc) => {
-                    const outs = await Outcome.find({ competence: dbc._id }).lean();
-                    dbOutcomesByComp[String(dbc._id)] = outs || [];
-                  }));
-
-                  const isPlaceholderCompName = (name) => {
-                    const n = cleanTextForComparison(name);
-                    if (!n) return true;
-                    if (/^competencia[0-9]*$/.test(n)) return true;
-                    if (/^versionde$/.test(n)) return true;
-                    return false;
-                  };
-
-                  (planningData.pedagogicalPlanning.content || []).forEach(phase => {
-                    (phase.competencies || []).forEach(comp => {
-                      if (!isPlaceholderCompName(comp.name)) return;
-
-                      let bestComp = null;
-                      let bestScore = 0;
-
-                      for (const dbc of dbCompetences) {
-                        // 1) Código exacto
-                        if (String(dbc.number).trim() === String(comp.code).trim()) {
-                          bestComp = dbc;
-                          bestScore = 2;
-                          break;
-                        }
-
-                        // 2) Similitud de nombre (normalmente 0 contra basura)
-                        let score = getSimilarity(dbc.name, comp.name);
-
-                        // 3) Cruce de RAPs extraídos con resultados de la BD
-                        const compRapTexts = (comp.learningOutcomes || [])
-                          .map(r => cleanTextForComparison(r.description))
-                          .filter(Boolean);
-                        const dbOutcomes = dbOutcomesByComp[String(dbc._id)] || [];
-                        if (compRapTexts.length > 0 && dbOutcomes.length > 0) {
-                          let hits = 0;
-                          for (const rapText of compRapTexts) {
-                            for (const dbo of dbOutcomes) {
-                              const dbText = cleanTextForComparison(dbo.outcomes);
-                              if (!dbText) continue;
-                              if (
-                                dbText === rapText
-                                || dbText.includes(rapText)
-                                || rapText.includes(dbText)
-                                || getSimilarity(dbText, rapText) >= 0.85
-                              ) {
-                                hits++;
-                                break;
-                              }
-                            }
-                          }
-                          const rapRatio = hits / Math.min(compRapTexts.length, Math.max(dbOutcomes.length, 1));
-                          if (rapRatio >= 0.5) {
-                            score = Math.max(score, 0.9 + rapRatio * 0.1);
-                          } else {
-                            score = Math.max(score, rapRatio);
-                          }
-                        }
-
-                        if (score > bestScore) {
-                          bestScore = score;
-                          bestComp = dbc;
-                        }
-                      }
-
-                      if (bestComp && bestScore >= 0.4) {
-                        comp.name = bestComp.name;
-                        // Si el código del PDF no es un código oficial de 9 dígitos, usar el de la BD
-                        if (!/^\d{9}$/.test(String(comp.code).trim())) {
-                          comp.code = bestComp.number;
-                        }
-                        console.log(`[EXTRACT] Competencia corregida con datos de la BD: ${comp.code} -> ${bestComp.name}`);
-                      }
-                    });
-                  });
                 }
               }
             }
@@ -1999,6 +1910,7 @@ export const addActivityComment = async (req, res) => {
     });
   }
 };
+// fin de implementacion luis llanos
 
 // generado por luis llanos (recalcula y guarda horas directas para una o todas las fichas en MongoDB)
 /**
@@ -2054,3 +1966,4 @@ export const recalculateDirectHours = async (req, res) => {
     });
   }
 };
+// fin de implementacion luis llanos
