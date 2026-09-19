@@ -1,0 +1,27 @@
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; color: #333; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <p>Cordial saludo, <strong>{{instructorName}}</strong></p>
+    <p>Le informamos que su solicitud de formacion complementaria ha sido <strong>rechazada</strong>.</p>
+
+    <p><strong>Detalles de la solicitud:</strong></p>
+    <p>
+      Numero de solicitud: {{numeroSolicitud}}<br>
+      Curso: {{courseName}}<br>
+      Codigo: {{courseCode}}<br>
+      Version: {{courseVersion}}<br>
+      Fecha de rechazo: {{rejectionDate}}
+    </p>
+
+    <p><strong>Observaciones del revisor:</strong></p>
+    <p>{{observations}}</p>
+
+    <p>Puede editar su solicitud con las correcciones indicadas y reenviarla para una nueva revision.</p>
+
+    <p style="font-size: 12px; color: #666;">Este mensaje fue enviado automaticamente por el sistema REPORA - SENA. No responda a este correo.</p>
+  </body>
+</html>

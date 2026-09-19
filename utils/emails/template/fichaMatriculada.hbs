@@ -1,0 +1,92 @@
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; color: #333; font-size: 14px; }
+      table { width: 100%; max-width: 600px; border-collapse: collapse; margin-top: 15px; }
+      th, td { border: 1px solid #000000; padding: 10px; text-align: center; }
+      .label-col { width: 50%; font-weight: bold; }
+      .value-col { width: 50%; }
+      .highlight { background-color: #ffff00; }
+    </style>
+  </head>
+  <body>
+    <p>Cordial saludo,</p>
+    <p>Se ha completado el proceso de inscripción y se ha matriculado la siguiente ficha de formación complementaria:</p>
+
+    <table>
+      <tbody>
+        <tr>
+          <td class="label-col">Numero De La Ficha</td>
+          <td class="value-col">{{fichaNumber}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Fecha de creación</td>
+          <td class="value-col">{{fechaCreacion}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Nombre del programa de formación</td>
+          <td class="value-col">{{courseName}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Código programa en Sofía Plus</td>
+          <td class="value-col">{{courseCode}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Versión</td>
+          <td class="value-col">{{courseVersion}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Duración (horas)</td>
+          <td class="value-col">{{duracion}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Fecha inicio</td>
+          <td class="value-col">{{fechaInicio}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Fecha fin</td>
+          <td class="value-col">{{fechaFin}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Cupo</td>
+          <td class="value-col">{{cupo}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Municipio</td>
+          <td class="value-col">{{municipio}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Ambiente</td>
+          <td class="value-col">{{ambiente}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">Horario</td>
+          <td class="value-col">{{{horario}}}</td>
+        </tr>
+        <tr class="highlight">
+          <td class="label-col">Código de empresa-solicitud</td>
+          <td class="value-col">{{codigoSolicitud}}</td>
+        </tr>
+        <tr class="highlight">
+          <td class="label-col">Fecha límite de inscripción</td>
+          <td class="value-col">{{fechaLimiteInscripcion}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">instructor</td>
+          <td class="value-col">{{instructorNombre}}</td>
+        </tr>
+        <tr>
+          <td class="label-col">correo</td>
+          <td class="value-col"><a href="mailto:{{instructorCorreo}}">{{instructorCorreo}}</a></td>
+        </tr>
+        <tr>
+          <td class="label-col">Numero de Acta de Trazabilidad</td>
+          <td class="value-col">{{numeroActaTrazabilidad}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <br>
+    <p style="font-size: 12px; color: #666;">Este mensaje fue enviado automáticamente por el sistema REPFORA - SENA. No responda a este correo.</p>
+  </body>
+</html>
