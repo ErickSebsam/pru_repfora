@@ -341,28 +341,23 @@ const fillMissingIntoExistingPlanning = (existingPlanning, planningData) => {
           });
         }
 
-        // cambion efectuado por luis llanos: completar materiales y ambiente si estaban vacíos en actividades existentes
+        // completar materiales y ambiente en environment si estaban vacíos en actividades existentes
         exActs.forEach((exAct, actIdx) => {
           const correspondingInAct = inActs[actIdx] || inActs[0];
           if (correspondingInAct) {
-            const inMats = correspondingInAct.trainingMaterials || correspondingInAct.materials || correspondingInAct.environment?.materials || [];
-            if ((!exAct.materials || exAct.materials.length === 0) && inMats.length > 0) {
-              exAct.materials = JSON.parse(JSON.stringify(inMats));
-            }
-            if ((!exAct.trainingMaterials || exAct.trainingMaterials.length === 0) && inMats.length > 0) {
-              exAct.trainingMaterials = JSON.parse(JSON.stringify(inMats));
-            }
-            if ((!exAct.environment?.materials || exAct.environment.materials.length === 0) && inMats.length > 0) {
-              if (!exAct.environment) exAct.environment = { type: '', materials: [] };
+            const inMats = correspondingInAct.environment?.materials || correspondingInAct.trainingMaterials || correspondingInAct.materials || [];
+            if (!exAct.environment) exAct.environment = { type: '', materials: [] };
+            if ((!exAct.environment.materials || exAct.environment.materials.length === 0) && inMats.length > 0) {
               exAct.environment.materials = JSON.parse(JSON.stringify(inMats));
             }
-            if (isEmptyValue(exAct.environment?.type) && !isEmptyValue(correspondingInAct.environment?.type)) {
-              if (!exAct.environment) exAct.environment = { type: '', materials: [] };
-              exAct.environment.type = correspondingInAct.environment.type;
+            const inType = correspondingInAct.environment?.type || correspondingInAct.learningEnvironment || '';
+            if (isEmptyValue(exAct.environment?.type) && !isEmptyValue(inType)) {
+              exAct.environment.type = inType;
             }
-            if (isEmptyValue(exAct.learningEnvironment) && !isEmptyValue(correspondingInAct.learningEnvironment)) {
-              exAct.learningEnvironment = correspondingInAct.learningEnvironment;
-            }
+            // Eliminar campos obsoletos fuera de environment
+            delete exAct.materials;
+            delete exAct.trainingMaterials;
+            delete exAct.learningEnvironment;
           }
         });
 
@@ -518,9 +513,12 @@ export const uploadPlanning = async (req, res) => {
                     existingAct.didacticStrategies = incomingAct.didacticStrategies || [];
                     existingAct.learningEvidences = incomingAct.learningEvidences || [];
                     existingAct.environment = {
-                      type: incomingAct.environment?.type || '',
-                      materials: incomingAct.environment?.materials || []
+                      type: incomingAct.environment?.type || incomingAct.learningEnvironment || existingAct.environment?.type || '',
+                      materials: incomingAct.environment?.materials || incomingAct.trainingMaterials || incomingAct.materials || existingAct.environment?.materials || []
                     };
+                    delete existingAct.materials;
+                    delete existingAct.trainingMaterials;
+                    delete existingAct.learningEnvironment;
                     if (incomingAct.observations !== undefined) {
                       existingAct.observations = incomingAct.observations;
                     }
@@ -530,16 +528,6 @@ export const uploadPlanning = async (req, res) => {
                     }
                     if (incomingAct.isScheduledInCalendar !== undefined) {
                       existingAct.isScheduledInCalendar = incomingAct.isScheduledInCalendar;
-                    }
-                    // cambion efectuado por luis llanos
-                    if (incomingAct.materials !== undefined) {
-                      existingAct.materials = incomingAct.materials;
-                    }
-                    if (incomingAct.trainingMaterials !== undefined) {
-                      existingAct.trainingMaterials = incomingAct.trainingMaterials;
-                    }
-                    if (incomingAct.learningEnvironment !== undefined) {
-                      existingAct.learningEnvironment = incomingAct.learningEnvironment;
                     }
                     // implementacion de luis llanos (preservar comentarios en la actualizacion segura de actividades)
                     if (incomingAct.comments !== undefined) {
@@ -836,13 +824,16 @@ export const extractFromPDFs = async (req, res) => {
                   comp.learningOutcomes.forEach(rap => {
                     if (rap.pedagogicalActivities) {
                       rap.pedagogicalActivities.forEach(act => {
-                        const mats = act.trainingMaterials || act.materials || act.environment?.materials || [];
+                        const mats = act.environment?.materials || act.trainingMaterials || act.materials || [];
+                        const envType = act.environment?.type || act.learningEnvironment || '';
+                        if (!act.environment) act.environment = { type: '', materials: [] };
+                        act.environment.type = envType;
                         if (mats.length > 0) {
-                          act.materials = mats;
-                          act.trainingMaterials = mats;
-                          if (!act.environment) act.environment = { type: '', materials: [] };
                           act.environment.materials = mats;
                         }
+                        delete act.materials;
+                        delete act.trainingMaterials;
+                        delete act.learningEnvironment;
                       });
                     }
                   });
@@ -873,17 +864,115 @@ export const extractFromPDFs = async (req, res) => {
             }
 
             // Traer los datos del programa registrados en la base de datos si faltan
+            // o si el extractor dejó placeholders ("PROGRAMA" / "000000") porque el
+            // PDF del programa no se pudo interpretar.
             if (dbFiche.program) {
               const dbProgram = await Program.findById(dbFiche.program).lean();
               if (dbProgram) {
                 if (!planningData.pedagogicalPlanning.metadata) {
                   planningData.pedagogicalPlanning.metadata = {};
                 }
-                if (!planningData.pedagogicalPlanning.metadata.programCode && dbProgram.code) {
+
+                const isPlaceholderMetadata = (value) =>
+                  isEmptyValue(value)
+                  || String(value).trim().toUpperCase() === 'PROGRAMA'
+                  || String(value).trim() === '000000';
+
+                if (isPlaceholderMetadata(planningData.pedagogicalPlanning.metadata.programCode) && dbProgram.code) {
                   planningData.pedagogicalPlanning.metadata.programCode = dbProgram.code;
                 }
-                if (!planningData.pedagogicalPlanning.metadata.programName && dbProgram.name) {
+                if (isPlaceholderMetadata(planningData.pedagogicalPlanning.metadata.programName) && dbProgram.name) {
                   planningData.pedagogicalPlanning.metadata.programName = dbProgram.name;
+                }
+                if (isEmptyValue(planningData.pedagogicalPlanning.metadata.version) && dbProgram.version) {
+                  planningData.pedagogicalPlanning.metadata.version = dbProgram.version;
+                }
+
+                // Corregir con la BD los nombres de competencias que el extractor
+                // dejó en blanco o como basura (ej. "COMPETENCIA 240201500",
+                // "VERSIÓN DE") cuando el PDF del programa no se pudo leer bien.
+                // Se cruza por código, por nombre y por las descripciones de los
+                // RAPs contra los resultados de aprendizaje de la BD.
+                const dbCompetences = await Competence.find({ program: dbProgram._id }).lean();
+                if (dbCompetences.length > 0) {
+                  const dbOutcomesByComp = {};
+                  await Promise.all(dbCompetences.map(async (dbc) => {
+                    const outs = await Outcome.find({ competence: dbc._id }).lean();
+                    dbOutcomesByComp[String(dbc._id)] = outs || [];
+                  }));
+
+                  const isPlaceholderCompName = (name) => {
+                    const n = cleanTextForComparison(name);
+                    if (!n) return true;
+                    if (/^competencia[0-9]*$/.test(n)) return true;
+                    if (/^versionde$/.test(n)) return true;
+                    return false;
+                  };
+
+                  (planningData.pedagogicalPlanning.content || []).forEach(phase => {
+                    (phase.competencies || []).forEach(comp => {
+                      if (!isPlaceholderCompName(comp.name)) return;
+
+                      let bestComp = null;
+                      let bestScore = 0;
+
+                      for (const dbc of dbCompetences) {
+                        // 1) Código exacto
+                        if (String(dbc.number).trim() === String(comp.code).trim()) {
+                          bestComp = dbc;
+                          bestScore = 2;
+                          break;
+                        }
+
+                        // 2) Similitud de nombre (normalmente 0 contra basura)
+                        let score = getSimilarity(dbc.name, comp.name);
+
+                        // 3) Cruce de RAPs extraídos con resultados de la BD
+                        const compRapTexts = (comp.learningOutcomes || [])
+                          .map(r => cleanTextForComparison(r.description))
+                          .filter(Boolean);
+                        const dbOutcomes = dbOutcomesByComp[String(dbc._id)] || [];
+                        if (compRapTexts.length > 0 && dbOutcomes.length > 0) {
+                          let hits = 0;
+                          for (const rapText of compRapTexts) {
+                            for (const dbo of dbOutcomes) {
+                              const dbText = cleanTextForComparison(dbo.outcomes);
+                              if (!dbText) continue;
+                              if (
+                                dbText === rapText
+                                || dbText.includes(rapText)
+                                || rapText.includes(dbText)
+                                || getSimilarity(dbText, rapText) >= 0.85
+                              ) {
+                                hits++;
+                                break;
+                              }
+                            }
+                          }
+                          const rapRatio = hits / Math.min(compRapTexts.length, Math.max(dbOutcomes.length, 1));
+                          if (rapRatio >= 0.5) {
+                            score = Math.max(score, 0.9 + rapRatio * 0.1);
+                          } else {
+                            score = Math.max(score, rapRatio);
+                          }
+                        }
+
+                        if (score > bestScore) {
+                          bestScore = score;
+                          bestComp = dbc;
+                        }
+                      }
+
+                      if (bestComp && bestScore >= 0.4) {
+                        comp.name = bestComp.name;
+                        // Si el código del PDF no es un código oficial de 9 dígitos, usar el de la BD
+                        if (!/^\d{9}$/.test(String(comp.code).trim())) {
+                          comp.code = bestComp.number;
+                        }
+                        console.log(`[EXTRACT] Competencia corregida con datos de la BD: ${comp.code} -> ${bestComp.name}`);
+                      }
+                    });
+                  });
                 }
               }
             }
@@ -1669,301 +1758,3 @@ export const applyPlanningTemplate = async (req, res) => {
     res.status(500).json({ message: 'Error al aplicar la plantilla', error: error.message });
   }
 };
-
-// implementacion de luis llanos (guarda comentario en actividad pedagogica y notifica por email al creador y al instructor del RAP)
-/**
- * Guarda un comentario en una actividad pedagógica específica y envía notificaciones por correo
- * tanto al creador del comentario como al instructor responsable del resultado de aprendizaje.
- */
-export const addActivityComment = async (req, res) => {
-  try {
-    const { fiche } = req.params;
-    const {
-      phase,
-      compCode,
-      compName,
-      rapDesc,
-      actDesc,
-      activityIndex,
-      responsibleInstructor,
-      comment
-    } = req.body;
-
-    if (!fiche) {
-      return res.status(400).json({ message: 'Falta el número de ficha' });
-    }
-    if (!comment || !comment.text || !comment.text.trim()) {
-      return res.status(400).json({ message: 'El comentario no puede estar vacío' });
-    }
-
-    // 1. Obtener datos del usuario desde el token JWT
-    const token = req.headers.token || req.headers.authorization;
-    let decoded = null;
-    if (token) {
-      try {
-        decoded = await webToken.decodeAnyToken(token);
-      } catch (err) {
-        console.warn('Error decodificando token en addActivityComment:', err.message);
-      }
-    }
-
-    const authorName = comment.author || decoded?.name || decoded?.nombre || 'Usuario REPFORA';
-    const authorEmail = (comment.authorEmail || decoded?.email || '').trim().toLowerCase();
-    const authorRole = (comment.role || decoded?.rol || 'USUARIO').toUpperCase();
-
-    const formattedComment = {
-      id: comment.id || ('comm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
-      text: comment.text.trim(),
-      author: authorName,
-      authorEmail: authorEmail,
-      role: authorRole,
-      createdAt: comment.createdAt || new Date().toISOString()
-    };
-
-    // 2. Cargar planeación pedagógica
-    const planningDoc = await Planning.findOne({ 'pedagogicalPlanning.fiche': fiche });
-    if (!planningDoc || !planningDoc.pedagogicalPlanning) {
-      return res.status(404).json({ message: `Planeación no encontrada para la ficha ${fiche}` });
-    }
-
-    const programName = planningDoc.pedagogicalPlanning.metadata?.programName || 'Programa de Formación';
-
-    // 3. Localizar la actividad en el árbol de contenido
-    let activityFound = null;
-    let fallbackActivity = null;
-    let targetInstructorName = responsibleInstructor || '';
-
-    if (Array.isArray(planningDoc.pedagogicalPlanning.content)) {
-      for (const p of planningDoc.pedagogicalPlanning.content) {
-        if (phase && p.phase !== phase) continue;
-        if (!Array.isArray(p.competencies)) continue;
-
-        for (const c of p.competencies) {
-          if (compCode && c.code !== compCode) continue;
-          if (!Array.isArray(c.learningOutcomes)) continue;
-
-          for (const r of c.learningOutcomes) {
-            const rapMatch = !rapDesc || cleanTextForComparison(r.description) === cleanTextForComparison(rapDesc);
-            if (!rapMatch) continue;
-            if (!Array.isArray(r.pedagogicalActivities)) continue;
-
-            if (!fallbackActivity && r.pedagogicalActivities.length > 0) {
-              fallbackActivity = r.pedagogicalActivities[0];
-            }
-
-            // Si se suministró índice
-            if (typeof activityIndex === 'number' && r.pedagogicalActivities[activityIndex]) {
-              activityFound = r.pedagogicalActivities[activityIndex];
-              break;
-            }
-
-            // Búsqueda por descripción
-            for (const a of r.pedagogicalActivities) {
-              if (actDesc && cleanTextForComparison(a.description || a.observations) === cleanTextForComparison(actDesc)) {
-                activityFound = a;
-                break;
-              }
-            }
-
-            if (!activityFound && r.pedagogicalActivities.length === 1) {
-              activityFound = r.pedagogicalActivities[0];
-            }
-
-            if (activityFound) break;
-          }
-          if (activityFound) break;
-        }
-        if (activityFound) break;
-      }
-    }
-
-    const finalActivity = activityFound || fallbackActivity;
-    if (!finalActivity) {
-      return res.status(404).json({ message: 'No se encontró la actividad en la planeación pedagógica' });
-    }
-
-    if (!Array.isArray(finalActivity.comments)) {
-      finalActivity.comments = [];
-    }
-    finalActivity.comments.push(formattedComment);
-
-    if (!targetInstructorName) {
-      targetInstructorName = finalActivity.responsibleInstructor?.name
-        || (typeof finalActivity.responsibleInstructor === 'string' ? finalActivity.responsibleInstructor : '')
-        || finalActivity.suggestedInstructor?.name
-        || finalActivity.instructors?.name
-        || '';
-    }
-
-    if (!planningDoc.pedagogicalPlanning.timestamps) {
-      planningDoc.pedagogicalPlanning.timestamps = {};
-    }
-    planningDoc.pedagogicalPlanning.timestamps.updatedAt = new Date();
-    planningDoc.markModified('pedagogicalPlanning.content');
-    await planningDoc.save();
-
-    // 4. Buscar información del instructor responsable en BD
-    let instructorEmail = '';
-    let foundInstructor = null;
-
-    if (targetInstructorName) {
-      foundInstructor = await Instructor.findOne({ name: new RegExp(`^${targetInstructorName.trim()}$`, 'i') });
-      if (!foundInstructor) {
-        const words = normalizeName(targetInstructorName).split(/\s+/).filter(w => w.length > 2);
-        if (words.length > 0) {
-          const candidates = await Instructor.find({ name: new RegExp(words[0], 'i') });
-          foundInstructor = candidates.find(c => isSameInstructorName(c.name, targetInstructorName)) || null;
-        }
-      }
-      if (foundInstructor) {
-        instructorEmail = (foundInstructor.email || foundInstructor.emailpersonal || '').trim().toLowerCase();
-      }
-    }
-
-    // 5. Destinatarios de correo
-    const emailsToNotify = [];
-    if (authorEmail && authorEmail.includes('@')) {
-      emailsToNotify.push({
-        email: authorEmail,
-        recipientName: authorName,
-        isAuthor: true
-      });
-    }
-
-    if (instructorEmail && instructorEmail.includes('@')) {
-      // Si el instructor responsable es diferente al autor del comentario, se agrega a la lista
-      if (instructorEmail !== authorEmail) {
-        emailsToNotify.push({
-          email: instructorEmail,
-          recipientName: foundInstructor?.name || targetInstructorName || 'Instructor',
-          isAuthor: false
-        });
-      }
-    }
-
-    // 6. Envío de correos asíncrono
-    if (emailsToNotify.length > 0 && process.env.FROM_EMAIL && process.env.SECURY_EMAIL) {
-      const emailBasePayload = {
-        fiche,
-        programName,
-        phase: phase || '—',
-        competenceCode: compCode || '—',
-        competenceName: compName || '—',
-        rapDescription: rapDesc || '—',
-        activityDescription: actDesc || finalActivity.description || '—',
-        instructorName: targetInstructorName || 'Sin asignar',
-        authorName,
-        authorRole,
-        commentText: formattedComment.text,
-        date: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
-        url: `${process.env.URL_FRONTEND || 'http://localhost:3000'}/#/pedagogias`
-      };
-
-      for (const dest of emailsToNotify) {
-        const subject = dest.isAuthor
-          ? `Copia: Registraste un comentario en la Ficha ${fiche}`
-          : `Nueva Observación en tu RAP - Ficha ${fiche} (${authorName})`;
-
-        sendEmail(
-          process.env.FROM_EMAIL,
-          process.env.SECURY_EMAIL,
-          [dest.email],
-          subject,
-          {
-            ...emailBasePayload,
-            recipientName: dest.recipientName
-          },
-          "./template/commentNotification.hbs"
-        ).catch(mailErr => {
-          console.error(`[EMAIL ERROR] Error enviando notificación de comentario a ${dest.email}:`, mailErr.message);
-        });
-      }
-    }
-
-    // 7. Notificación en la campanita de la plataforma para el instructor responsable
-    if (instructorEmail && instructorEmail !== authorEmail) {
-      try {
-        const notifDoc = new Notification({
-          sender: authorName,
-          subject: `${authorName} comentó en tu RAP de la Ficha ${fiche}: "${formattedComment.text.slice(0, 70)}${formattedComment.text.length > 70 ? '...' : ''}"`,
-          fiche,
-          recipient: instructorEmail,
-          read: false
-        });
-        await notifDoc.save();
-      } catch (notifErr) {
-        console.warn('[NOTIFICACION ERROR] No se pudo guardar notificación en BD:', notifErr.message);
-      }
-    }
-
-    return res.status(200).json({
-      message: 'Comentario guardado y notificado exitosamente',
-      comment: formattedComment,
-      notifiedEmails: emailsToNotify.map(d => d.email)
-    });
-
-  } catch (error) {
-    console.error('Error en addActivityComment:', error);
-    return res.status(500).json({
-      message: 'Error al procesar el comentario',
-      error: error.message
-    });
-  }
-};
-// fin de implementacion luis llanos
-
-// generado por luis llanos (recalcula y guarda horas directas para una o todas las fichas en MongoDB)
-/**
- * Recalcula las horas directas de los resultados de aprendizaje basándose en el porcentaje
- * de horas lectivas respecto a las horas totales, y las horas de cada competencia.
- */
-export const recalculateDirectHours = async (req, res) => {
-  try {
-    /*
-    // comentado para correcion de multiplos
-    const { fiche, all } = req.body || {};
-    */
-
-    // correcion de multiplos
-    const { fiche, all, shift } = req.body || {};
-    const query = (fiche && !all) ? { 'pedagogicalPlanning.fiche': fiche } : {};
-
-    const plannings = await Planning.find(query);
-    if (!plannings || plannings.length === 0) {
-      return res.status(404).json({ message: 'No se encontraron planeaciones para recalcular' });
-    }
-
-    let updatedCount = 0;
-    for (const doc of plannings) {
-      if (!doc.pedagogicalPlanning) continue;
-
-      // correcion de multiplos
-      if (shift) {
-        if (!doc.pedagogicalPlanning.metadata) doc.pedagogicalPlanning.metadata = {};
-        doc.pedagogicalPlanning.metadata.shift = shift;
-      }
-
-      calculateDirectHoursForPlanning(doc.pedagogicalPlanning, true, shift);
-
-      if (!doc.pedagogicalPlanning.timestamps) {
-        doc.pedagogicalPlanning.timestamps = {};
-      }
-      doc.pedagogicalPlanning.timestamps.updatedAt = new Date();
-      doc.markModified('pedagogicalPlanning.content');
-      await doc.save();
-      updatedCount++;
-    }
-
-    return res.status(200).json({
-      message: `Horas directas calculadas y guardadas exitosamente para ${updatedCount} planeación(es).`,
-      updatedCount
-    });
-  } catch (error) {
-    console.error('Error en recalculateDirectHours:', error);
-    return res.status(500).json({
-      message: 'Error al recalcular horas directas',
-      error: error.message
-    });
-  }
-};
-// fin de implementacion luis llanos
