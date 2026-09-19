@@ -589,7 +589,6 @@ async function getOutcomes() {
 }
 
 async function showInfo(data) {
-  console.log(data);
   index.value = data._id;
   edit.value = true;
   prompt.value = true;
@@ -645,61 +644,75 @@ async function cleanForm() {
 
 async function postNew() {
   loading.value = true;
-  if (form.value.tpnew == "PLAN DE MEJORAMIENTO") {
-    await post("/news/registerimprovement", {
-        tpnew: form.value.tpnew,
-        tpdocument: form.value.tpdocument.value,
-        document: form.value.document,
-        name: form.value.name,
-        email: form.value.email,
-        phone: form.value.phone,
-        fiche: form.value.fiche.code,
-        competence: form.value.competence.value,
-        outcome: form.value.outcome.value,
-        fend: form.value.fend,
-        activity: form.value.activity,
-        instructor: form.value.instructor.value,
-        status: form.value.status,
-        type: form.value.tpImprovement
-      })
-      .then(async (res) => {
-        if (res) {
-          notifySuccessRequest("Plan de mejoramiento registrado");
-          prompt.value = false;
-          edit.value = false;
+  try {
+    if (form.value.tpnew == "PLAN DE MEJORAMIENTO") {
+      await post("/news/registerimprovement", {
+          tpnew: form.value.tpnew,
+          tpdocument: form.value.tpdocument.value,
+          document: form.value.document,
+          name: form.value.name,
+          email: form.value.email,
+          phone: form.value.phone,
+          fiche: form.value.fiche.code,
+          competence: form.value.competence.value,
+          outcome: form.value.outcome.value,
+          fend: form.value.fend,
+          activity: form.value.activity,
+          instructor: form.value.instructor.value,
+          status: form.value.status,
+          type: form.value.tpImprovement
+        })
+        .then(async (res) => {
+          if (res) {
+            notifySuccessRequest("Plan de mejoramiento registrado");
+            prompt.value = false;
+            edit.value = false;
 
-          cleanForm();
-          await getImprovements();
-        }
-      });
-  } else if (form.value.tpnew == "DESERCIÓN") {
+            cleanForm();
+            await getImprovements();
+          }
+        });
+    } else if (form.value.tpnew == "DESERCIÓN") {
+    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 async function putNew() {
   loading.value = true;
-  if (form.value.tpnew == "PLAN DE MEJORAMIENTO") {
-    await put(`/news/updateimprovement/${index.value}`, {
-        tpnew: form.value.tpnew,
-        tpdocument: form.value.tpdocument.value,
-        document: form.value.document,
-        name: form.value.name,
-        email: form.value.email,
-        phone: form.value.phone,
-        fiche: form.value.fiche.code,
-        competence: form.value.competence.value,
-        outcome: form.value.outcome.value,
-        fend: form.value.fend,
-        activity: form.value.activity,
-        status: form.value.status,
-        instructor: form.value.instructor.value,
-        type: form.value.tpImprovement
-      })
-      .then(async (res) => {
+  try {
+    if (form.value.tpnew == "PLAN DE MEJORAMIENTO") {
+      await put(`/news/updateimprovement/${index.value}`, {
+          tpnew: form.value.tpnew,
+          tpdocument: form.value.tpdocument.value,
+          document: form.value.document,
+          name: form.value.name,
+          email: form.value.email,
+          phone: form.value.phone,
+          fiche: form.value.fiche.code,
+          competence: form.value.competence.value,
+          outcome: form.value.outcome.value,
+          fend: form.value.fend,
+          activity: form.value.activity,
+          status: form.value.status,
+          instructor: form.value.instructor.value,
+          type: form.value.tpImprovement
+        })
+        .then(async (res) => {
+          if (res) {
+            notifySuccessRequest("Plan de mejoramiento actualizado");
+            prompt.value = false;
+            edit.value = false;
+
+            cleanForm();
+            await getImprovements();
+          }
+        });
+    } else if (form.value.tpnew == "DESERCIÓN") {
+      await post("/news/registerpublic", form.value).then(async (res) => {
         if (res) {
-          notifySuccessRequest("Plan de mejoramiento actualizado");
+          notifySuccessRequest("Novedad registrada correctamente");
           prompt.value = false;
           edit.value = false;
 
@@ -707,20 +720,10 @@ async function putNew() {
           await getImprovements();
         }
       });
-  } else if (form.value.tpnew == "DESERCIÓN") {
-    await post("/news/registerpublic", form.value).then(async (res) => {
-      if (res) {
-        notifySuccessRequest("Novedad registrada correctamente");
-        prompt.value = false;
-        edit.value = false;
-
-        cleanForm();
-        await getImprovements();
-      }
-    });
+    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 async function notifyNew(id) {

@@ -241,22 +241,24 @@ async function generateReport() {
   };
   loading.value = true;
 
-  const res = await post("/reports/hoursinstructors", {
-    fstart: form.value.fstart,
-    fend: form.value.fend,
-    type: form.value.type.value,
-  });
-  if (res.data.length > 0) {
-    dataReport.value = {
-      dataHoursIns: res.data,
-      months: res.months,
-      showDialog: false,
-    };
-  } else {
-    notifyErrorRequest("Sin información para mostrar");
+  try {
+    const res = await post("/reports/hoursinstructors", {
+      fstart: form.value.fstart,
+      fend: form.value.fend,
+      type: form.value.type.value,
+    });
+    if (res.data.length > 0) {
+      dataReport.value = {
+        dataHoursIns: res.data,
+        months: res.months,
+        showDialog: false,
+      };
+    } else {
+      notifyErrorRequest("Sin información para mostrar");
+    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 function changeDialog(show = false) {

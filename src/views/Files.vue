@@ -460,21 +460,24 @@ async function getFiches() {
 
 async function postFiches() {
   loading.value = true;
-  await post("/fiches/register", {
-    number: number.value,
-    program: program.value.value,
-    owner: owner.value.value,
-    coordination: coordination.value.value,
-    fstart: fStart.value,
-    fend: fEnd.value,
-  });
-  notifySuccessRequest("Ficha registrada correctamente");
-  prompt.value = false;
-  edit.value = false;
+  try {
+    await post("/fiches/register", {
+      number: number.value,
+      program: program.value.value,
+      owner: owner.value.value,
+      coordination: coordination.value.value,
+      fstart: fStart.value,
+      fend: fEnd.value,
+    });
+    notifySuccessRequest("Ficha registrada correctamente");
+    prompt.value = false;
+    edit.value = false;
 
-  cleanForm();
-  await getFiches();
-  loading.value = false;
+    cleanForm();
+    await getFiches();
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function activarDesactivar(data) {
@@ -493,22 +496,24 @@ async function activarDesactivar(data) {
 async function putFiches() {
   loading.value = true;
 
-  await put("/fiches/update/" + index.value, {
-    number: number.value,
-    program: program.value.value,
-    owner: owner.value.value,
-    coordination: coordination.value.value,
-    fstart: fStart.value,
-    fend: fEnd.value,
-  });
-  notifySuccessRequest("Ficha actualizada correctamente");
-  prompt.value = false;
-  edit.value = false;
-  cleanForm();
-  await getFiches();
-  searchFiche();
-
-  loading.value = false;
+  try {
+    await put("/fiches/update/" + index.value, {
+      number: number.value,
+      program: program.value.value,
+      owner: owner.value.value,
+      coordination: coordination.value.value,
+      fstart: fStart.value,
+      fend: fEnd.value,
+    });
+    notifySuccessRequest("Ficha actualizada correctamente");
+    prompt.value = false;
+    edit.value = false;
+    cleanForm();
+    await getFiches();
+    searchFiche();
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function getPrograms() {

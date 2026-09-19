@@ -1349,7 +1349,6 @@ const configForm = ref({
 async function loadCronStatus() {
   loadingCron.value = true;
   const res = await get("/auditoria/cron/status");
-  console.log(res);
 
   cronStatus.value = res || { enabled: false, active: false };
   loadingCron.value = false;
@@ -1359,7 +1358,6 @@ async function loadCronStatus() {
 async function loadEmailStatus() {
   loadingEmail.value = true;
   const res = await get("/auditoria/email/status");
-  console.log(res);
 
   emailStatus.value = res || { enabled: false };
   loadingEmail.value = false;
@@ -1539,7 +1537,6 @@ const showExcludeModal = ref(false);
 // Load coordinations
 async function loadCoordinations() {
   const res = await get("/auditoria/coordinaciones");
-  console.log(res);
 
   coordinations.value = res.data || [];
 }
@@ -1652,7 +1649,6 @@ function filterResults() {
 async function loadOmissions() {
   loadingOmissions.value = true;
   const res = await get("/auditoria/omisiones/agrupadas");
-  console.log(res);
 
   let data = res.data;
   if (data && typeof data === "object" && !Array.isArray(data) && data.data) {

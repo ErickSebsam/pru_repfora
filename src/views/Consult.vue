@@ -532,7 +532,6 @@ function generateCalendar() {
 
 async function getFiches() {
   const res = await get("/fiches?status=0");
-  console.log(res);
   res.forEach((row, index) => {
     optionsFiches.value.push({
       label: `${row.number} - ${row.program.name}`,
@@ -562,48 +561,54 @@ async function getEnvironments() {
 
 async function getReport() {
   loadingData.value = true;
-  if (opcion.value == "instructor") {
-    let data = {
-      instructor: inst.value.value,
-      fstart: fStart.value,
-      fend: fEnd.value,
-    };
+  try {
+    
+    if (opcion.value == "instructor") {
+      let data = {
+        instructor: inst.value.value,
+        fstart: fStart.value,
+        fend: fEnd.value,
+      };
+  
+      const res = await post("/reports/instructor", data);
+      months.value = res.months;
+      yearsMonth.value = res.yearsMonth;
+      eventsCalender.value = res.events;
+      nameInstructor.value = res.instructor;
+      hoursWork1.value = res.hoursworkFormacion;
+      hoursWork2.value = res.hoursworkOthers;
+  
+      generateCalendar();
+    } else if (opcion.value == "ficha") {
+      let data = {
+        fiche: fiche.value.value,
+        fstart: fStart.value,
+        fend: fEnd.value,
+      };
+      const res = await post("/reports", data);
+      months.value = res.months;
+      yearsMonth.value = res.yearsMonth;
+      eventsCalender.value = res.events;
+      dataFiche.value = `${res.fiche} - ${res.program}`;
+      generateCalendar();
+    } else {
+      let data = {
+        environment: environment.value.value,
+        fstart: fStart.value,
+        fend: fEnd.value,
+      };
+      const res = await post("/reports/environment", data);
+      months.value = res.months;
+      yearsMonth.value = res.yearsMonth;
+      eventsCalender.value = res.events;
+      nameEnvironment.value = res.environment;
+      generateCalendar();
+    }
+  }finally{
 
-    const res = await post("/reports/instructor", data);
-    months.value = res.months;
-    yearsMonth.value = res.yearsMonth;
-    eventsCalender.value = res.events;
-    nameInstructor.value = res.instructor;
-    hoursWork1.value = res.hoursworkFormacion;
-    hoursWork2.value = res.hoursworkOthers;
-
-    generateCalendar();
-  } else if (opcion.value == "ficha") {
-    let data = {
-      fiche: fiche.value.value,
-      fstart: fStart.value,
-      fend: fEnd.value,
-    };
-    const res = await post("/reports", data);
-    months.value = res.months;
-    yearsMonth.value = res.yearsMonth;
-    eventsCalender.value = res.events;
-    dataFiche.value = `${res.fiche} - ${res.program}`;
-    generateCalendar();
-  } else {
-    let data = {
-      environment: environment.value.value,
-      fstart: fStart.value,
-      fend: fEnd.value,
-    };
-    const res = await post("/reports/environment", data);
-    months.value = res.months;
-    yearsMonth.value = res.yearsMonth;
-    eventsCalender.value = res.events;
-    nameEnvironment.value = res.environment;
-    generateCalendar();
+    loadingData.value = false;
   }
-  loadingData.value = false;
+  
 }
 
 async function exportCalender() {

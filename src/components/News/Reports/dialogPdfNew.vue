@@ -509,7 +509,6 @@ function generatePdf() {
       let date = new Date().toISOString().split("T")[0];
       
       $q.loading.hide();
-      console.log(nameFile.value)
 
       doc.save(`${nameFile.value}-${date}.pdf`);
 

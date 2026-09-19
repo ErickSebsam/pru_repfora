@@ -142,7 +142,6 @@ export async function exportNewToExcel(rows, name, isImprovement = false) {
     await writeFileXLSX(wb, `${nameFile}.xlsx`);
     notifySuccessRequest("Excel generado correctamente");
   } catch (error) {
-    console.log(error);
     notifyErrorRequest("Error al generar el excel");
   }
 }

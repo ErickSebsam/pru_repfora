@@ -54,7 +54,6 @@ export async function outcomePending(row) {
     await writeFileXLSX(wb, "RESULTADOS PENDIENTES.xlsx");
     notifySuccessRequest("Excel generado correctamente");
   } catch (error) {
-    console.log(error);
     notifyErrorRequest("Error al generar el excel");
   }
 }

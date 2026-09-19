@@ -658,7 +658,6 @@ async function getReportByDocument() {
   const data = await post("/reportnew/student", {
     student: form.value.document,
   });
-  console.log(data);
   dataReport.value.dataNewsStudent = data.news;
   existInfo.value = true;
 }
@@ -723,32 +722,34 @@ async function generateReport() {
   loading.value = true;
   existInfo.value = false;
   clearData();
-  switch (form.value.typeReport.value) {
-    case "ACTA":
-      await getReportByActa();
-      break;
-    case "TIPO":
-      if (form.value.tpNew.value != "PLAN DE MEJORAMIENTO")
-        await getReportByType();
-      else await getReportByImprovement();
-      break;
-    case "ESTADO":
-      await getReportByState();
-      break;
-    case "FICHA":
-      await getReportByFiche();
-      break;
-    case "DETALLE":
-      await getReportByDocument();
-      break;
-    case "ESTADISTICO":
-      await statisticsReport();
-      break;
-    default:
-      break;
+  try {
+    switch (form.value.typeReport.value) {
+      case "ACTA":
+        await getReportByActa();
+        break;
+      case "TIPO":
+        if (form.value.tpNew.value != "PLAN DE MEJORAMIENTO")
+          await getReportByType();
+        else await getReportByImprovement();
+        break;
+      case "ESTADO":
+        await getReportByState();
+        break;
+      case "FICHA":
+        await getReportByFiche();
+        break;
+      case "DETALLE":
+        await getReportByDocument();
+        break;
+      case "ESTADISTICO":
+        await statisticsReport();
+        break;
+      default:
+        break;
+    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 function filterFiche(val, update, abort) {
@@ -802,7 +803,6 @@ function generatePdf(type = "acta",name, data = null) {
   }
   dataPdf.value.data = dataToPdf ?? [data];
   dataPdf.value.type = type;
-  console.log(name);
   dataPdf.value.nameFile = name;
 
   dataReport.value.generateReport = true;

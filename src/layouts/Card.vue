@@ -3,6 +3,16 @@
     class="my-card-1 text-center shadow-5 full-width"
     v-if="props.roles.length>0 ? props.roles.includes(userStore.getRole()) : true"
   >
+  <q-badge
+          v-if="props.title === 'Planeación' || props.title === 'Complementarias'"
+          color="deep-orange-9"
+          text-color="white"
+          floating
+          class="q-pa-xs text-weight-bold"
+          style="font-size: 10px; top: 12px; right: 12px; z-index: 10;"
+        >
+          EN PRUEBAS
+        </q-badge>
     <q-card-section class="card_style q-py-sm">
       <div class="row items-center justify-center">
         <div class="text-h6 style-text">
@@ -14,6 +24,12 @@
     <div class="justify-center flex q-my-sm">
       <img :src="props.image" class="img-card" :alt="props.title" />
     </div>
+    <q-card-section
+      v-if="props.description"
+      class="q-pa-md text-center text-body2 text-grey-7"
+    >
+      {{ props.description }}
+    </q-card-section>
     <q-separator />
     <router-link :to="props.route" style="text-decoration: none; color: black">
       <q-card-actions class="column items-center q-mt-sm q-pb-md">
@@ -39,6 +55,10 @@ const props = defineProps({
     default: "",
   },
   route: {
+    type: String,
+    default: "",
+  },
+  description: {
     type: String,
     default: "",
   },

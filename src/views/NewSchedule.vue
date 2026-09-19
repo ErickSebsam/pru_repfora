@@ -825,10 +825,13 @@ async function saveData() {
 
   dataShedule.events = diasProgramados.value;
 
-  await post("/schedules/register", dataShedule);
-  notifySuccessRequest("Programación guardada correctamente");
-  clearFields();
-  loading.value = false;
+  try {
+    await post("/schedules/register", dataShedule);
+    notifySuccessRequest("Programación guardada correctamente");
+    clearFields();
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function updateData() {
@@ -851,13 +854,14 @@ async function updateData() {
 
   dataSchedule.events = diasProgramados.value;
 
-  await put("/schedules/update/" + idSchedule.value, dataSchedule);
-  notifySuccessRequest("Programación actualizada correctamente");
-  loading.value = false;
-  clearFields();
-  $router.back();
-
-  loading.value = false;
+  try {
+    await put("/schedules/update/" + idSchedule.value, dataSchedule);
+    notifySuccessRequest("Programación actualizada correctamente");
+    clearFields();
+    $router.back();
+  } finally {
+    loading.value = false;
+  }
 }
 
 const clearDataCalender = () => {

@@ -143,7 +143,6 @@ let print = ref(false);
 
 onBeforeMount(async () => {
   const token = router.currentRoute.value.params.token;
-  console.log("token buscado "+token);
   
   const decodeToken = jwt_decode(token);
 

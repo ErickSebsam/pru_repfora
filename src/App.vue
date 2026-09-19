@@ -4,7 +4,7 @@
       <HeaderLayout :logout="logout" :toggleLeftDrawer="toggleLeftDrawer" />
       <DrawerLayout
         :toggleLeftDrawer="toggleLeftDrawer"
-        :leftDrawerOpen="leftDrawerOpen"
+        v-model:left-drawer-open="leftDrawerOpen"
       />
 
       <q-page-container style="padding-left: 0">
@@ -17,28 +17,60 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeUser } from "./store/users.js";
+import { storeMenu } from "./store/menu.store.js";
 import { useRouter } from "vue-router";
 
 import FooterLayout from "./layouts/footerLayout.vue";
 import HeaderLayout from "./layouts/headerLayout.vue";
 import DrawerLayout from "./layouts/drawerLayout.vue";
+import { useQuasar } from "quasar";
 
 const userStore = storeUser();
+const menuStore = storeMenu();
 const router = useRouter();
+const $q = useQuasar();
 
 const currentDate = new Date();
 const dateLogin = new Date(userStore.dateLogin);
 
-const leftDrawerOpen = ref(false);
+const leftDrawerOpen = computed({
+  get: () => menuStore.leftDrawerOpen,
+  set: (value) => {
+    menuStore.leftDrawerOpen = value;
+  },
+});
+
 function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
+  menuStore.toggleLeftDrawer();
 }
 
+watch(
+  () => router.currentRoute.value.fullPath,
+  () => {
+    leftDrawerOpen.value = false;
+  }
+);
+
 const logout = () => {
+  $q.dialog({
+    title: "Cerrar Sesión",
+    message: "¿Está seguro que desea cerrar la sesión?",
+    cancel: { label: "Cancelar", flat: true, color: "grey-7" },
+    ok: { label: "Cerrar Sesión", color: "green-9" },
+    persistent: true,
+  }).onOk(() => {
+    performLogout();
+  });
+};
+
+const performLogout = () => {
   userStore.logoutUser();
   leftDrawerOpen.value = false;
+  sessionStorage.removeItem("storeUser");
+  sessionStorage.clear();
+  localStorage.removeItem("token");
   router.replace({ name: "login" });
 };
 

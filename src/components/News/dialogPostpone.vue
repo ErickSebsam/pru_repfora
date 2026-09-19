@@ -226,17 +226,19 @@ async function upgradeNews() {
     message: "Actualizando novedades, espere por favor...",
   });
 
-  await put("/news/upgradepostpone", {
-      news: selected.value.map((item) => item._id),
-    })
-    .then((res) => {
-      if (res) {
-        notifySuccessRequest("Novedades actualizadas correctamente");
-          props.showDialogPostpone(true);
-      }
-    });
-
-  $q.loading.hide();
+  try {
+    await put("/news/upgradepostpone", {
+        news: selected.value.map((item) => item._id),
+      })
+      .then((res) => {
+        if (res) {
+          notifySuccessRequest("Novedades actualizadas correctamente");
+            props.showDialogPostpone(true);
+        }
+      });
+  } finally {
+    $q.loading.hide();
+  }
 }
 </script>
     

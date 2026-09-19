@@ -158,12 +158,13 @@ import { ref, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import BtnBack from '../layouts/btnBackLayout.vue';
 import HeaderLayout from '../layouts/headerViewsLayout.vue';
+import { VacationService } from '../services/planning.service.js';
 
 const $q = useQuasar();
 const formRef = ref(null);
 
 const form = ref({
-  id: null,
+  _id: null,
   start: '',
   end: '',
   reason: ''
@@ -197,17 +198,14 @@ onMounted(() => {
   loadVacations();
 });
 
-const loadVacations = () => {
+const loadVacations = async () => {
   try {
-    const data = localStorage.getItem('planning_vacations');
-    vacations.value = data ? JSON.parse(data) : [];
+    const data = await VacationService.getAll();
+    vacations.value = Array.isArray(data) ? data : [];
   } catch (e) {
+    console.error('Error cargando vacaciones', e);
     vacations.value = [];
   }
-};
-
-const saveVacationsToStorage = () => {
-  localStorage.setItem('planning_vacations', JSON.stringify(vacations.value));
 };
 
 const formatDateCO = (dateStr) => {
@@ -216,33 +214,35 @@ const formatDateCO = (dateStr) => {
   return `${d}/${m}/${y}`;
 };
 
-const saveVacation = () => {
+const saveVacation = async () => {
   if (isEditing.value) {
     // Editar
-    const index = vacations.value.findIndex(v => v.id === form.value.id);
-    if (index !== -1) {
-      vacations.value[index] = {
-        ...vacations.value[index],
+    try {
+      await VacationService.update(form.value._id, {
         start: form.value.start,
         end: form.value.end,
         reason: form.value.reason
-      };
-      saveVacationsToStorage();
+      });
+      await loadVacations();
       $q.notify({ message: 'Novedad modificada con éxito ✅', color: 'green-9', icon: 'check_circle' });
       cancelEdit();
+    } catch (e) {
+      $q.notify({ message: 'Error al modificar novedad', color: 'red-9' });
     }
   } else {
     // Crear nuevo
-    const newVacation = {
-      id: Date.now().toString(),
-      start: form.value.start,
-      end: form.value.end,
-      reason: form.value.reason
-    };
-    vacations.value.push(newVacation);
-    saveVacationsToStorage();
-    $q.notify({ message: 'Novedad registrada con éxito ✅', color: 'green-9', icon: 'check_circle' });
-    resetForm();
+    try {
+      await VacationService.create({
+        start: form.value.start,
+        end: form.value.end,
+        reason: form.value.reason
+      });
+      await loadVacations();
+      $q.notify({ message: 'Novedad registrada con éxito ✅', color: 'green-9', icon: 'check_circle' });
+      resetForm();
+    } catch (e) {
+      $q.notify({ message: 'Error al registrar novedad', color: 'red-9' });
+    }
   }
 };
 
@@ -258,7 +258,7 @@ const cancelEdit = () => {
 
 const resetForm = () => {
   form.value = {
-    id: null,
+    _id: null,
     start: '',
     end: '',
     reason: ''
@@ -276,12 +276,16 @@ const confirmDelete = (vacationItem) => {
     cancel: { color: 'grey-8', flat: true, label: 'Cancelar' },
     ok: { color: 'red-9', label: 'Eliminar' },
     persistent: true
-  }).onOk(() => {
-    vacations.value = vacations.value.filter(v => v.id !== vacationItem.id);
-    saveVacationsToStorage();
-    $q.notify({ message: 'Novedad eliminada con éxito 🗑️', color: 'red-8', icon: 'delete' });
-    if (isEditing.value && form.value.id === vacationItem.id) {
-      cancelEdit();
+  }).onOk(async () => {
+    try {
+      await VacationService.delete(vacationItem._id);
+      await loadVacations();
+      $q.notify({ message: 'Novedad eliminada con éxito 🗑️', color: 'red-8', icon: 'delete' });
+      if (isEditing.value && form.value._id === vacationItem._id) {
+        cancelEdit();
+      }
+    } catch (e) {
+      $q.notify({ message: 'Error al eliminar novedad', color: 'red-9' });
     }
   });
 };

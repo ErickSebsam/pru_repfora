@@ -1,137 +1,317 @@
 <template>
   <div>
     <q-card-section class="bg-white q-py-sm">
-      <div class="text-overline text-green-8 text-bold text-uppercase">Resultado de Aprendizaje</div>
-      <div class="text-subtitle2 text-weight-bold text-green-10">
-        {{ rIdx + 1 }}. {{ rap.description }}
+      <div class="row items-center no-wrap justify-between">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <span class="text-overline text-green-8 text-bold text-uppercase">Resultado de Aprendizaje</span>
+            <!-- actualizacion horas luis llanos 15-09-2026 -->
+            <q-badge v-if="rapSuggestedHours" outline color="green-9" class="text-weight-bold q-px-xs">
+              💡 Sugerido RAP: {{ rapSuggestedHours }}h
+            </q-badge>
+          </div>
+          <div class="text-subtitle2 text-weight-bold text-green-10 leading-tight">
+            {{ rap.description }}
+          </div>
+        </div>
+        <!-- Controles para reordenar RAPs de forma simple -->
+        <div class="row items-center q-gutter-x-xs self-center" v-if="store.isLeader">
+
+          <q-btn flat round dense icon="arrow_upward" size="md" color="green-9" :disable="rIdx === 0"
+            @click="moveRap(-1)">
+            <q-tooltip class="bg-green-9 text-weight-bold">Mover hacia arriba</q-tooltip>
+          </q-btn>
+
+          <q-btn flat round dense icon="arrow_downward" size="md" color="green-9"
+            :disable="rIdx === comp.learningOutcomes.length - 1" @click="moveRap(1)">
+            <q-tooltip class="bg-green-9 text-weight-bold">Mover hacia abajo</q-tooltip>
+          </q-btn>
+        </div>
       </div>
     </q-card-section>
 
-    <q-expansion-item
-      square
-      icon="menu_open"
-      label="Ver saberes y criterios"
-      header-class="text-green-9 text-weight-bold"
-      class="q-mx-md q-mb-md bg-grey-1"
-    >
+    <q-expansion-item square header-class="q-pa-none" :class="knowledgeProgress.complete ? 'bg-green-1' : 'bg-orange-1'"
+      class="q-mx-md q-mt-sm q-mb-md rounded-borders overflow-hidden">
+      <template v-slot:header>
+        <q-item-section avatar center>
+          <q-icon :name="knowledgeProgress.complete ? 'check_circle' : 'warning'"
+            :color="knowledgeProgress.complete ? 'green-9' : 'orange-9'" size="26px" margin-left="10px" />
+        </q-item-section>
+        <q-item-section>
+          <div class="text-weight-bolder text-uppercase"
+            :class="knowledgeProgress.complete ? 'text-green-9' : 'text-orange-9'"
+            style="font-size: 13px; letter-spacing: .3px">
+            Saberes y criterios — {{ knowledgeProgress.done }} de {{ knowledgeProgress.total }} secciones completas
+          </div>
+        </q-item-section>
+      </template>
+
       <q-card flat square class="bg-grey-1">
         <q-card-section class="row q-col-gutter-md">
+
           <!-- Saberes Conceptos y Principios -->
           <div class="col-12 col-md-4">
-            <div class="row items-center justify-between">
-              <div class="text-bold text-green-9">Saberes Conceptos y Principios</div>
-              <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem('conceptsAndPrinciples', 'Nuevo Concepto')" v-if="store.isLeader" />
-            </div>
-            <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm" v-if="displayKnowledge.concepts?.length">
-              <div v-for="(s, idx) in displayKnowledge.concepts" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem('conceptsAndPrinciples', idx, 'Editar Concepto')" v-if="store.isLeader" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem('conceptsAndPrinciples', idx)" v-if="store.isLeader" />
-              </div>
-            </q-scroll-area>
-            <div class="text-caption text-grey-5 italic" v-else>No definidos</div>
+            <q-card flat bordered :class="displayKnowledge.concepts?.length ? 'border-filled' : 'border-empty'">
+              <q-card-section class="q-py-sm">
+                <div class="row items-center justify-between no-wrap">
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-icon :name="displayKnowledge.concepts?.length ? 'check_circle' : 'radio_button_unchecked'"
+                      :color="displayKnowledge.concepts?.length ? 'green-9' : 'grey-5'" size="18px" />
+                    <div class="text-bold text-green-9 text-caption text-uppercase">Saberes Conceptos y Principios</div>
+                  </div>
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-badge v-if="displayKnowledge.concepts?.length" color="green-9"
+                      :label="displayKnowledge.concepts.length" />
+                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                      @click="addListItem('conceptsAndPrinciples', 'Nuevo Concepto')" v-if="canEdit" />
+                  </div>
+                </div>
+                <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
+                  v-if="displayKnowledge.concepts?.length">
+                  <div v-for="(s, idx) in displayKnowledge.concepts" :key="idx"
+                    class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem('conceptsAndPrinciples', idx, 'Editar Concepto')" v-if="canEdit" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem('conceptsAndPrinciples', idx)" v-if="canEdit" />
+                  </div>
+                </q-scroll-area>
+                <div class="text-caption text-orange-9 q-mt-sm" v-else>⚠ Falta definir</div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- Saberes de Proceso -->
           <div class="col-12 col-md-4">
-            <div class="row items-center justify-between">
-              <div class="text-bold text-green-9">Saberes de Proceso</div>
-              <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem('processes', 'Nuevo Proceso')" v-if="store.isLeader" />
-            </div>
-            <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm" v-if="displayKnowledge.processes?.length">
-              <div v-for="(s, idx) in displayKnowledge.processes" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem('processes', idx, 'Editar Proceso')" v-if="store.isLeader" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem('processes', idx)" v-if="store.isLeader" />
-              </div>
-            </q-scroll-area>
-            <div class="text-caption text-grey-5 italic" v-else>No definidos</div>
+            <q-card flat bordered :class="displayKnowledge.processes?.length ? 'border-filled' : 'border-empty'">
+              <q-card-section class="q-py-sm">
+                <div class="row items-center justify-between no-wrap">
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-icon :name="displayKnowledge.processes?.length ? 'check_circle' : 'radio_button_unchecked'"
+                      :color="displayKnowledge.processes?.length ? 'green-9' : 'grey-5'" size="18px" />
+                    <div class="text-bold text-green-9 text-caption text-uppercase">Saberes de Proceso</div>
+                  </div>
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-badge v-if="displayKnowledge.processes?.length" color="green-9"
+                      :label="displayKnowledge.processes.length" />
+                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                      @click="addListItem('processes', 'Nuevo Proceso')" v-if="canEdit" />
+                  </div>
+                </div>
+                <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
+                  v-if="displayKnowledge.processes?.length">
+                  <div v-for="(s, idx) in displayKnowledge.processes" :key="idx"
+                    class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem('processes', idx, 'Editar Proceso')" v-if="canEdit" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem('processes', idx)" v-if="canEdit" />
+                  </div>
+                </q-scroll-area>
+                <div class="text-caption text-orange-9 q-mt-sm" v-else>⚠ Falta definir</div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- Criterios de Evaluación -->
           <div class="col-12 col-md-4">
-            <div class="row items-center justify-between">
-              <div class="text-bold text-green-9">Criterios de Evaluación</div>
-              <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem('evaluationCriteria', 'Nuevo Criterio')" v-if="store.isLeader" />
-            </div>
-            <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm" v-if="displayKnowledge.criteria?.length">
-              <div v-for="(c, idx) in displayKnowledge.criteria" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ c }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem('evaluationCriteria', idx, 'Editar Criterio')" v-if="store.isLeader" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem('evaluationCriteria', idx)" v-if="store.isLeader" />
-              </div>
-            </q-scroll-area>
-            <div class="text-caption text-grey-5 italic" v-else>No definidos</div>
+            <q-card flat bordered :class="displayKnowledge.criteria?.length ? 'border-filled' : 'border-empty'">
+              <q-card-section class="q-py-sm">
+                <div class="row items-center justify-between no-wrap">
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-icon :name="displayKnowledge.criteria?.length ? 'check_circle' : 'radio_button_unchecked'"
+                      :color="displayKnowledge.criteria?.length ? 'green-9' : 'grey-5'" size="18px" />
+                    <div class="text-bold text-green-9 text-caption text-uppercase">Criterios de Evaluación</div>
+                  </div>
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-badge v-if="displayKnowledge.criteria?.length" color="green-9"
+                      :label="displayKnowledge.criteria.length" />
+                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                      @click="addListItem('evaluationCriteria', 'Nuevo Criterio')" v-if="canEdit" />
+                  </div>
+                </div>
+                <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
+                  v-if="displayKnowledge.criteria?.length">
+                  <div v-for="(c, idx) in displayKnowledge.criteria" :key="idx"
+                    class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ c }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem('evaluationCriteria', idx, 'Editar Criterio')" v-if="canEdit" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem('evaluationCriteria', idx)" v-if="canEdit" />
+                  </div>
+                </q-scroll-area>
+                <div class="text-caption text-orange-9 q-mt-sm" v-else>⚠ Falta definir</div>
+              </q-card-section>
+            </q-card>
           </div>
-          
+
+          <!-- Perfil Académico Mínimo del Instructor (4.8.1) -->
+          <div class="col-12 q-mt-sm">
+            <q-card flat bordered :class="academicRequirementsList.length ? 'border-filled' : 'border-empty'">
+              <q-card-section class="q-py-xs row items-center justify-between no-wrap">
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon :name="academicRequirementsList.length ? 'check_circle' : 'radio_button_unchecked'"
+                    :color="academicRequirementsList.length ? 'green-9' : 'grey-5'" size="18px" />
+                  <div class="text-bold text-green-9 text-caption text-uppercase">Requisitos Académicos</div>
+                </div>
+                <div class="row items-center q-gutter-x-xs">
+                  <q-badge v-if="academicRequirementsList.length" color="green-9"
+                    :label="academicRequirementsList.length" />
+                  <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addAcademicRequirement"
+                    v-if="canEdit" />
+                </div>
+              </q-card-section>
+              <q-card-section class="q-pt-none q-pb-sm">
+                <q-scroll-area style="height: 150px;" v-if="academicRequirementsList.length">
+                  <div v-for="(req, idx) in academicRequirementsList" :key="idx"
+                    class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase" style="white-space: pre-wrap;">• {{ req }}
+                    </div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editAcademicRequirement(idx)" v-if="canEdit" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeAcademicRequirement(idx)" v-if="canEdit" />
+                  </div>
+                </q-scroll-area>
+                <div class="text-caption text-orange-9 q-pl-md" v-else>⚠ Falta definir</div>
+              </q-card-section>
+            </q-card>
+          </div>
+
           <q-separator class="col-12 q-my-sm" color="green-3" />
 
           <div v-for="(act, aIdx) in rap.pedagogicalActivities" :key="aIdx" class="col-12 row q-col-gutter-md">
             <div class="col-12 text-weight-bold text-green-10 q-mt-sm" v-if="rap.pedagogicalActivities.length > 1">
               ACTIVIDAD {{ aIdx + 1 }}: {{ act.description || act.observations || 'Sin descripción' }}
             </div>
-            
+
             <div class="col-12 col-md-6">
-              <div class="row items-center justify-between">
-                <div class="text-bold text-green-9">Estrategias Didácticas</div>
-                <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem(act.didacticStrategies, 'Nueva Estrategia')" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
-              <div v-for="(s, idx) in act.didacticStrategies" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem(act.didacticStrategies, idx, 'Editar Estrategia')" v-if="store.isLeader || isMyActivity(act)" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem(act.didacticStrategies, idx)" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
+              <q-card flat bordered :class="act.didacticStrategies?.length ? 'border-filled' : 'border-empty'">
+                <q-card-section class="q-py-sm">
+                  <div class="row items-center justify-between no-wrap">
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-icon :name="act.didacticStrategies?.length ? 'check_circle' : 'radio_button_unchecked'"
+                        :color="act.didacticStrategies?.length ? 'green-9' : 'grey-5'" size="18px" />
+                      <div class="text-bold text-green-9 text-caption text-uppercase">Estrategias Didácticas</div>
+                    </div>
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-badge v-if="act.didacticStrategies?.length" color="green-9"
+                        :label="act.didacticStrategies.length" />
+                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                        @click="addListItem(act.didacticStrategies, 'Nueva Estrategia')"
+                        v-if="store.isLeader || isMyActivity(act)" />
+                    </div>
+                  </div>
+                  <div v-for="(s, idx) in act.didacticStrategies" :key="idx" class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem(act.didacticStrategies, idx, 'Editar Estrategia')"
+                      v-if="store.isLeader || isMyActivity(act)" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem(act.didacticStrategies, idx)" v-if="store.isLeader || isMyActivity(act)" />
+                  </div>
+                  <div class="text-caption text-orange-9 q-mt-xs" v-if="!act.didacticStrategies?.length">⚠ Falta definir
+                  </div>
+                </q-card-section>
+              </q-card>
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="row items-center justify-between">
-                <div class="text-bold text-green-9">Evidencias de Aprendizaje</div>
-                <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem(act.learningEvidences, 'Nueva Evidencia')" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
-              <div v-for="(e, idx) in act.learningEvidences" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ e }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem(act.learningEvidences, idx, 'Editar Evidencia')" v-if="store.isLeader || isMyActivity(act)" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem(act.learningEvidences, idx)" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
+              <q-card flat bordered :class="act.learningEvidences?.length ? 'border-filled' : 'border-empty'">
+                <q-card-section class="q-py-sm">
+                  <div class="row items-center justify-between no-wrap">
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-icon :name="act.learningEvidences?.length ? 'check_circle' : 'radio_button_unchecked'"
+                        :color="act.learningEvidences?.length ? 'green-9' : 'grey-5'" size="18px" />
+                      <div class="text-bold text-green-9 text-caption text-uppercase">Evidencias de Aprendizaje</div>
+                    </div>
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-badge v-if="act.learningEvidences?.length" color="green-9"
+                        :label="act.learningEvidences.length" />
+                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                        @click="addListItem(act.learningEvidences, 'Nueva Evidencia')"
+                        v-if="store.isLeader || isMyActivity(act)" />
+                    </div>
+                  </div>
+                  <div v-for="(e, idx) in act.learningEvidences" :key="idx" class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ e }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem(act.learningEvidences, idx, 'Editar Evidencia')"
+                      v-if="store.isLeader || isMyActivity(act)" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem(act.learningEvidences, idx)" v-if="store.isLeader || isMyActivity(act)" />
+                  </div>
+                  <div class="text-caption text-orange-9 q-mt-xs" v-if="!act.learningEvidences?.length">⚠ Falta definir
+                  </div>
+                </q-card-section>
+              </q-card>
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="row items-center justify-between">
-                <div class="text-bold text-green-9">Ambientes Tipificados</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editEnvironmentType(act)" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
-              <div class="text-caption text-grey-9 text-uppercase">- {{ act.environment?.type || 'No definido' }}</div>
+              <q-card flat bordered :class="act.environment?.type ? 'border-filled' : 'border-empty'">
+                <q-card-section class="q-py-sm">
+                  <div class="row items-center justify-between no-wrap">
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-icon :name="act.environment?.type ? 'check_circle' : 'radio_button_unchecked'"
+                        :color="act.environment?.type ? 'green-9' : 'grey-5'" size="18px" />
+                      <div class="text-bold text-green-9 text-caption text-uppercase">Ambientes Tipificados</div>
+                    </div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editEnvironmentType(act)" v-if="store.isLeader || isMyActivity(act)" />
+                  </div>
+                  <div class="text-caption text-grey-9 text-uppercase q-mt-xs" v-if="act.environment?.type">- {{
+                    act.environment.type }}</div>
+                  <div class="text-caption text-orange-9 q-mt-xs" v-else>⚠ Falta definir</div>
+                </q-card-section>
+              </q-card>
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="row items-center justify-between">
-                <div class="text-bold text-green-9">Materiales</div>
-                <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addListItem(act.environment?.materials, 'Nuevo Material')" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
-              <div v-for="(m, idx) in act.environment?.materials" :key="idx" class="row items-center no-wrap q-my-xs">
-                <div class="col text-caption text-grey-9 text-uppercase">- {{ m }}</div>
-                <q-btn square flat round dense icon="edit" size="xs" color="blue-8" @click="editListItem(act.environment.materials, idx, 'Editar Material')" v-if="store.isLeader || isMyActivity(act)" />
-                <q-btn square flat round dense icon="delete" size="xs" color="red-8" @click="removeListItem(act.environment.materials, idx)" v-if="store.isLeader || isMyActivity(act)" />
-              </div>
+              <q-card flat bordered :class="act.environment?.materials?.length ? 'border-filled' : 'border-empty'">
+                <q-card-section class="q-py-sm">
+                  <div class="row items-center justify-between no-wrap">
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-icon :name="act.environment?.materials?.length ? 'check_circle' : 'radio_button_unchecked'"
+                        :color="act.environment?.materials?.length ? 'green-9' : 'grey-5'" size="18px" />
+                      <div class="text-bold text-green-9 text-caption text-uppercase">Materiales</div>
+                    </div>
+                    <div class="row items-center q-gutter-x-xs">
+                      <q-badge v-if="act.environment?.materials?.length" color="green-9"
+                        :label="act.environment.materials.length" />
+                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
+                        @click="addListItem(act.environment?.materials, 'Nuevo Material')"
+                        v-if="store.isLeader || isMyActivity(act)" />
+                    </div>
+                  </div>
+                  <div v-for="(m, idx) in act.environment?.materials" :key="idx"
+                    class="row items-center no-wrap q-my-xs">
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ m }}</div>
+                    <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
+                      @click="editListItem(act.environment.materials, idx, 'Editar Material')"
+                      v-if="store.isLeader || isMyActivity(act)" />
+                    <q-btn square flat round dense icon="delete" size="xs" color="red-8"
+                      @click="removeListItem(act.environment.materials, idx)"
+                      v-if="store.isLeader || isMyActivity(act)" />
+                  </div>
+                  <div class="text-caption text-orange-9 q-mt-xs" v-if="!act.environment?.materials?.length">⚠ Falta
+                    definir
+                  </div>
+                </q-card-section>
+              </q-card>
             </div>
           </div>
         </q-card-section>
       </q-card>
     </q-expansion-item>
 
-    <ActivityManager 
-      :rap="rap" 
-      :comp="comp" 
-      :instructors="instructors" 
-      @open-scheduler="$emit('open-scheduler', $event)"
-    />
+    <ActivityManager :rap="rap" :comp="comp" :instructors="instructors"
+      @open-scheduler="$emit('open-scheduler', $event)" />
 
-    <EditKnowledgeDialog
-      v-model="editDialog.isOpen"
-      :title="editDialog.title"
-      :initial-value="editDialog.initialValue"
-      @save="handleDialogSave"
-    />
+    <EditKnowledgeDialog v-model="editDialog.isOpen" :title="editDialog.title" :initial-value="editDialog.initialValue"
+      @save="handleDialogSave" />
   </div>
 </template>
 
@@ -203,6 +383,25 @@ const isMyActivity = (act) => {
   return isAssigned && isConfirmed;
 };
 
+const canEdit = computed(() => {
+  return store.isLeader || (props.rap.pedagogicalActivities && props.rap.pedagogicalActivities.some(act => isMyActivity(act)));
+});
+
+const syncChanges = (listOrFieldName) => {
+  if (typeof listOrFieldName === 'string') {
+    store.updateRAPFieldInStore(props.comp.code, props.rap.description, listOrFieldName, props.rap[listOrFieldName]);
+  } else {
+    const act = props.rap.pedagogicalActivities.find(a => {
+      return a.didacticStrategies === listOrFieldName ||
+        a.learningEvidences === listOrFieldName ||
+        a.environment?.materials === listOrFieldName;
+    });
+    if (act) {
+      store.updateActivityInStore(props.comp.code, props.rap.description, act.description, act);
+    }
+  }
+};
+
 const props = defineProps({
   rap: { type: Object, required: true },
   comp: { type: Object, required: true },
@@ -214,6 +413,69 @@ defineEmits(['open-scheduler']);
 
 const store = usePlanningStore();
 const $q = useQuasar();
+
+// actualizacion horas luis llanos 15-09-2026
+const rapSuggestedHours = computed(() => {
+  return store.getSuggestedHours(props.comp, props.rap).rapTotal;
+});
+
+const moveRap = async (direction) => {
+  try {
+    if (!store.planning) return;
+
+    // 1. Encontrar la fase en el store
+    const phaseIndex = store.planning.pedagogicalPlanning.content.findIndex(
+      p => p.phase === store.selectedPhase
+    );
+    if (phaseIndex === -1) return;
+
+    // 2. Encontrar la competencia en el store
+    const compIndex = store.planning.pedagogicalPlanning.content[phaseIndex].competencies.findIndex(
+      c => c.code === props.comp.code
+    );
+    if (compIndex === -1) return;
+
+    const storeList = store.planning.pedagogicalPlanning.content[phaseIndex].competencies[compIndex].learningOutcomes;
+
+    // 3. Encontrar los RAPs correspondientes en la lista real por descripción
+    const currentRapDesc = props.rap.description;
+    const targetRap = props.comp.learningOutcomes[props.rIdx + direction];
+    if (!targetRap) return;
+
+    const idxA = storeList.findIndex(r => r.description === currentRapDesc);
+    const idxB = storeList.findIndex(r => r.description === targetRap.description);
+
+    if (idxA === -1 || idxB === -1) return;
+
+    $q.loading.show({ message: 'Reordenando...' });
+
+    // Intercambiar en la lista real del store
+    const temp = storeList[idxA];
+    storeList[idxA] = storeList[idxB];
+    storeList[idxB] = temp;
+
+    // Guardar el borrador en la base de datos
+    await store.saveDraft();
+    $q.loading.hide();
+
+    $q.notify({
+      message: '¡Orden de Resultados actualizado!',
+      color: 'green-9',
+      icon: 'check_circle',
+      position: 'top',
+      timeout: 2000
+    });
+  } catch (error) {
+    $q.loading.hide();
+    console.error('Error al mover el RAP:', error);
+    $q.notify({
+      message: 'No se pudo actualizar el orden.',
+      color: 'red-9',
+      icon: 'error',
+      position: 'top'
+    });
+  }
+};
 
 // Estado para el diálogo de edición personalizado
 const editDialog = ref({
@@ -227,14 +489,7 @@ const editDialog = ref({
 const displayKnowledge = computed(() => {
   // 1. Obtener los pools globales de la competencia (Source of Truth del nuevo extractor)
   const k = props.comp.knowledge || props.comp.Knowledge || props.comp.conocimientos || {};
-  
-  // Debug total para ver qué llega a la UI
-  console.log(`[DEBUG UI] Competencia ${props.comp.code}:`, {
-    hasKnowledgeField: !!props.comp.knowledge,
-    hasCriteriaField: !!props.comp.evaluationCriteria,
-    criteriaCount: props.comp.evaluationCriteria?.length || 0,
-    fullComp: props.comp
-  });
+
 
   const globalPools = {
     conceptsAndPrinciples: k.conceptsAndPrinciples || k.conceptos_y_principios || k.conceptos || k.saberes || k['4.6.2'] || k.del_saber || k.conocimientos_del_saber || [],
@@ -265,7 +520,7 @@ const displayKnowledge = computed(() => {
     for (let i = 0; i < props.rIdx; i++) {
       const prevRap = props.comp.learningOutcomes[i];
       const prevList = prevRap[fieldNameInRAP] || [];
-      
+
       // Si el RA anterior tiene una lista "limpiada" (menor que el pool), sus items están tomados
       if (prevList.length > 0 && prevList.length < globalPool.length) {
         prevList.forEach(item => takenInPrevious.add(String(item).trim()));
@@ -295,9 +550,9 @@ const ensureAndGetList = (fieldName) => {
     'processes': 'processes',
     'evaluationCriteria': 'criteria'
   };
-  
+
   const currentDisplayed = displayKnowledge.value[sourceMap[fieldName]] || [];
-  
+
   if (!props.rap[fieldName] || props.rap[fieldName].length === 0 || props.rap[fieldName].length >= currentDisplayed.length) {
     props.rap[fieldName] = [...currentDisplayed];
   }
@@ -317,7 +572,7 @@ const addListItem = (listOrFieldName, promptTitle) => {
   } else {
     list = listOrFieldName;
   }
-  
+
   if (!list) return;
 
   editDialog.value = {
@@ -326,6 +581,7 @@ const addListItem = (listOrFieldName, promptTitle) => {
     initialValue: '',
     onSave: async (data) => {
       list.push(data);
+      syncChanges(listOrFieldName);
       await store.saveDraft();
       $q.notify({ message: 'Elemento añadido ✅', color: 'green-7', position: 'bottom-right' });
     }
@@ -346,6 +602,7 @@ const editListItem = (listOrFieldName, index, promptTitle) => {
     initialValue: list[index],
     onSave: async (data) => {
       list[index] = data;
+      syncChanges(listOrFieldName);
       await store.saveDraft();
       $q.notify({ message: 'Elemento actualizado ✏️', color: 'blue-7', position: 'bottom-right' });
     }
@@ -359,8 +616,9 @@ const removeListItem = async (listOrFieldName, index) => {
   } else {
     list = listOrFieldName;
   }
-  
+
   list.splice(index, 1);
+  syncChanges(listOrFieldName);
   await store.saveDraft(); // Guardado inmediato para reactividad
   $q.notify({ message: 'Elemento eliminado 🗑️', color: 'grey-7', position: 'bottom-right' });
 };
@@ -371,11 +629,97 @@ const editEnvironmentType = (act) => {
     title: 'Ambiente Tipificado',
     initialValue: act.environment?.type || '',
     onSave: async (data) => {
-      if (!act.environment) act.environment = { type: '', materials: [] };
-      act.environment.type = data;
+      if (!act.environment) {
+        act.environment = { type: data, materials: [] };
+      } else {
+        // Rompemos la referencia para que no se cambie en todos lados si comparten el mismo objeto
+        act.environment = { ...act.environment, type: data };
+      }
+      store.updateActivityInStore(props.comp.code, props.rap.description, act.description, act);
       await store.saveDraft();
       $q.notify({ message: 'Ambiente actualizado ✏️', color: 'blue-7', position: 'bottom-right' });
     }
   };
 };
+
+// Obtener el perfil académico como lista de líneas formateada y separada dinámicamente
+const academicRequirementsList = computed(() => {
+  let raw = props.comp.academicRequirements || '';
+
+  // Agregar salto de línea antes de cada ALTERNATIVA o OPCIÓN para separarlas en viñetas
+  raw = raw
+    .replace(/(ALTERNATIVA\s+\d+|OPCI[ÓO]N\s+\d+)/gi, '\n$1')
+    .replace(/;\s*/g, ';\n') // Separar también por punto y coma si existen
+    .replace(/(\bTARJETA\s+PROFESIONAL)/gi, '\n$1'); // Separar la tarjeta profesional en su propia línea
+
+  return raw
+    .split('\n')
+    .map(x => x.trim())
+    .filter(x => x.length > 0);
+});
+
+const knowledgeProgress = computed(() => {
+  const dk = displayKnowledge.value;
+  const sections = [
+    dk.concepts?.length > 0,
+    dk.processes?.length > 0,
+    dk.criteria?.length > 0,
+    academicRequirementsList.value?.length > 0
+  ];
+  const done = sections.filter(Boolean).length;
+  return { done, total: sections.length, complete: done === sections.length };
+});
+
+const addAcademicRequirement = () => {
+  editDialog.value = {
+    isOpen: true,
+    title: 'Nuevo Requisito Académico',
+    initialValue: '',
+    onSave: async (data) => {
+      if (!data.trim()) return;
+      const currentList = [...academicRequirementsList.value];
+      currentList.push(data.trim());
+      props.comp.academicRequirements = currentList.join('\n');
+      store.updateCompetenceFieldInStore(props.comp.code, 'academicRequirements', props.comp.academicRequirements);
+      await store.saveDraft();
+      $q.notify({ message: 'Requisito añadido ✅', color: 'green-7', position: 'bottom-right' });
+    }
+  };
+};
+
+const editAcademicRequirement = (index) => {
+  const currentList = [...academicRequirementsList.value];
+  editDialog.value = {
+    isOpen: true,
+    title: 'Editar Requisito Académico',
+    initialValue: currentList[index],
+    onSave: async (data) => {
+      if (!data.trim()) return;
+      currentList[index] = data.trim();
+      props.comp.academicRequirements = currentList.join('\n');
+      store.updateCompetenceFieldInStore(props.comp.code, 'academicRequirements', props.comp.academicRequirements);
+      await store.saveDraft();
+      $q.notify({ message: 'Requisito actualizado ✏️', color: 'blue-7', position: 'bottom-right' });
+    }
+  };
+};
+
+const removeAcademicRequirement = async (index) => {
+  const currentList = [...academicRequirementsList.value];
+  currentList.splice(index, 1);
+  props.comp.academicRequirements = currentList.join('\n');
+  store.updateCompetenceFieldInStore(props.comp.code, 'academicRequirements', props.comp.academicRequirements);
+  await store.saveDraft();
+  $q.notify({ message: 'Requisito eliminado 🗑️', color: 'grey-7', position: 'bottom-right' });
+};
 </script>
+
+<style scoped>
+.border-filled {
+  border-left: 4px solid #2e7d32 !important;
+}
+
+.border-empty {
+  border-left: 4px solid #f57c00 !important;
+}
+</style>

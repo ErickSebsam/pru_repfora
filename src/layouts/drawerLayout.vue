@@ -1,6 +1,7 @@
 <template>
   <q-drawer
-    v-model="props.leftDrawerOpen"
+    :model-value="props.leftDrawerOpen"
+    @update:model-value="(value) => emit('update:leftDrawerOpen', value)"
     side="left"
     bordered
     :class="{ 'hide-menu':  $route.name === 'login' }"
@@ -62,6 +63,8 @@ const props = defineProps({
   toggleLeftDrawer: Function,
   leftDrawerOpen: Boolean,
 });
+
+const emit = defineEmits(["update:leftDrawerOpen"]);
 
 
 const userStore = storeUser();
@@ -154,8 +157,8 @@ const menu = ref([
   },
   {
     name: "Complementarias",
-    icon: "add_circle", // TODO: Reemplazar con icono definitivo
-    route: "/complementarias",
+    icon: "add_circle",
+    route: "/home/complementarias/admin",
     roles: ["PROGRAMADOR", "COORDINADOR"],
   },
 ]);

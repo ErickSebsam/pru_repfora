@@ -11,6 +11,8 @@ export const storeUser = defineStore(
     let email = ref("");
     let newConsult = ref("");
     let instructorData = ref({});
+    let storageSummary = ref(null);
+    let storageBannerDismissed = ref(false);
 
     const loginUser = async (credentials) => {
       try {
@@ -23,7 +25,7 @@ export const storeUser = defineStore(
         notifySuccessRequest("Logeado con Ã©xito");
         return true;
       } catch (error) {
-        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesión");
+        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesiï¿½n");
         return false;
       }
     };
@@ -39,6 +41,8 @@ export const storeUser = defineStore(
     const getSuper = () => {
       if (token.value) {
         const decoded = jwt_decode(token.value);
+        console.log(decoded);
+        
         return decoded.super;
       }
       return 0;
@@ -54,7 +58,7 @@ export const storeUser = defineStore(
 
         return data;
       } catch (error) {
-        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesión");
+        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesiï¿½n");
         return false;
       }
     };
@@ -68,7 +72,7 @@ export const storeUser = defineStore(
         });
         return data;
       } catch (error) {
-        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesión");
+        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesiï¿½n");
         return false;
       }
     };
@@ -82,7 +86,7 @@ export const storeUser = defineStore(
         });
         return data;
       } catch (error) {
-        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesión");
+        notifyErrorRequest(error.response?.data?.msg || error.message || "Error al iniciar sesiï¿½n");
         return false;
       }
     };
@@ -150,7 +154,6 @@ export const storeUser = defineStore(
         });
         notifySuccessRequest("Correo enviado correctamente");
       } catch (error) {
-        console.log(error.response);
         notifyErrorRequest(error.response.data.errors==undefined?error.response.data.msg:error.response.data.errors[0]);
       }
     };
@@ -169,12 +172,28 @@ export const storeUser = defineStore(
       }
     };
 
+    const fetchStorageSummary = async () => {
+      storageBannerDismissed.value = false;
+      try {
+        const { data } = await requestAxios.get("/storage/summary");
+        storageSummary.value = data;
+      } catch {
+        // non-critical, fail silently
+      }
+    };
+
+    const dismissStorageBanner = () => {
+      storageBannerDismissed.value = true;
+    };
+
     const logoutUser = () => {
       token.value = "";
       dateLogin.value = "";
       email.value = "";
       newConsult.value = "";
       instructorData.value = {};
+      storageSummary.value = null;
+      storageBannerDismissed.value = false;
     };
 
     return {
@@ -196,6 +215,10 @@ export const storeUser = defineStore(
       registerUser,
       sendEmail,
       sendPassword,
+      storageSummary,
+      storageBannerDismissed,
+      fetchStorageSummary,
+      dismissStorageBanner,
     };
   },
   {

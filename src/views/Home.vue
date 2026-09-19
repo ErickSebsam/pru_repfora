@@ -1,5 +1,42 @@
 <template>
   <div>
+    <div
+      v-if="showStorageBanner"
+      class="row no-wrap items-center q-mx-md q-mt-md q-px-lg q-py-sm rounded-borders shadow-3"
+      :class="storageBannerClass"
+    >
+      <q-icon :name="storageBannerIcon" size="26px" class="q-mr-md" />
+      <div class="col">
+        <div class="text-h6 text-weight-medium">
+          {{ userStore.storageSummary?.recommendation }}
+          <span class="q-ml-xs text-weight-regular">
+            — {{ userStore.storageSummary?.usage }} de {{ userStore.storageSummary?.limit }}
+          </span>
+        </div>
+        <div class="text-caption q-mt-xs">
+          Por favor contacte al administrador del sistema para gestionar el espacio.
+        </div>
+      </div>
+      <q-chip
+        dense
+        :color="storageBannerChipColor"
+        text-color="white"
+        icon="storage"
+        class="q-ml-md text-subtitle1 text-weight-bold q-pa-md"
+      >
+        {{ userStore.storageSummary?.percentage }}% ocupado
+      </q-chip>
+      <q-btn
+        flat
+        round
+        dense
+        icon="close"
+        class="q-ml-sm"
+        @click="userStore.dismissStorageBanner()"
+      />
+    </div>
+
+
     <div class="row q-my-xl justify-center">
       <div class="col-8 text-center text-h5 text-weight-bold">
         REGISTRO Y PROGRAMACIÓN DE FORMACIÓN ACTUALIZADA
@@ -43,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { storeUser } from "../store/users.js";
 import { useQuasar } from "quasar";
 
@@ -51,7 +88,34 @@ import Card from "../layouts/Card.vue";
 
 const $q = useQuasar();
 const userStore = storeUser();
-let show = ref(false);
+
+const showStorageBanner = computed(() => {
+  if (userStore.storageBannerDismissed) return false;
+  if (userStore.getSuper() !== 1) return false;
+  const s = userStore.storageSummary;
+  return s?.needsAttention === true && s?.status !== "healthy";
+});
+
+const storageBannerClass = computed(() => {
+  const status = userStore.storageSummary?.status;
+  if (status === "critical") return "bg-red-8 text-white";
+  if (status === "warning") return "bg-orange-8 text-white";
+  return "bg-amber-7 text-dark";
+});
+
+const storageBannerIcon = computed(() => {
+  const status = userStore.storageSummary?.status;
+  if (status === "critical") return "error";
+  if (status === "warning") return "warning";
+  return "info";
+});
+
+const storageBannerChipColor = computed(() => {
+  const status = userStore.storageSummary?.status;
+  if (status === "critical") return "red-10";
+  if (status === "warning") return "deep-orange-9";
+  return "orange-9";
+});
 
 const cards = ref([
   {
@@ -96,9 +160,9 @@ const cards = ref([
     roles: ["PROGRAMADOR", "COORDINADOR"],
     super: false,
   },
-  {
+   {
     title: "Horarios",
-    route: "/planning-schedules",
+    route: "/homeSchedules",
     image: "/images/calendar.png",
     roles: ["PROGRAMADOR", "COORDINADOR"],
     super: false,
@@ -146,12 +210,12 @@ const cards = ref([
     super: false,
   },
   {
-    title: "Planeación",
-    route: "/complementarias?redirect=planning",
-    image: "/images/calendar.png",
-    roles: ["PROGRAMADOR", "COORDINADOR"],
-    super: false,
-  },
+      title: "Planeación",
+      route: "/planning-dashboard", 
+      image: "/images/calendar.png",
+      roles: ["PROGRAMADOR", "COORDINADOR"],
+      super: false,
+    },
   {
     title: "Coordinación",
     route: "/coordination",
@@ -161,8 +225,8 @@ const cards = ref([
   },
   {
     title: "Complementarias",
-    route: "/complementarias",
-    image: "/images/Sena.png", // TODO: Reemplazar con imagen definitiva
+    route: "/home/complementarias/admin",
+    image: "/images/complementary.png", // TODO: Reemplazar con imagen definitiva
     roles: ["PROGRAMADOR", "COORDINADOR"],
     super: false,
   },

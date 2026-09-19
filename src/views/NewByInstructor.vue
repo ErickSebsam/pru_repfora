@@ -770,7 +770,6 @@ import DialogProcess from "../components/News/dialogProcess.vue";
 const $q = useQuasar();
 const userStore = storeUser();
 
-console.log(userStore.newConsult.value);
 
 let prompt = ref(false);
 let myForm = ref(null);
@@ -977,7 +976,6 @@ async function getFiches() {
 
 async function postNew() {
   loading.value = true;
-  console.log("instructor " + userStore.newConsult.value);
   const formData = new FormData();
   formData.append("file", form.value.file);
   formData.append("tpnew", form.value.tpNew);
@@ -996,19 +994,21 @@ async function postNew() {
     message: "Cargando contenido, esto puede tardar unos segundos...",
   });
 
-  await post("/news/register", formData).then(async (res) => {
-    if (res) {
-      notifySuccessRequest("Novedad registrada correctamente");
-      prompt.value = false;
-      edit.value = false;
-      cleanForm();
-      await getNewsByInstructor();
-    }
-  });
-  console.log("hola");
-  $q.loading.hide();
-  loading.value = false;
-  myForm.value.resetValidation();
+  try {
+    await post("/news/register", formData).then(async (res) => {
+      if (res) {
+        notifySuccessRequest("Novedad registrada correctamente");
+        prompt.value = false;
+        edit.value = false;
+        cleanForm();
+        await getNewsByInstructor();
+      }
+    });
+    myForm.value.resetValidation();
+  } finally {
+    $q.loading.hide();
+    loading.value = false;
+  }
 }
 
 /* editar una desercion */
@@ -1033,18 +1033,21 @@ async function putNew() {
     message: "Cargando contenido, esto puede tardar unos segundos...",
   });
 
-  await put(`/news/update/${index.value}`, formData).then(async (res) => {
-    if (res) {
-      notifySuccessRequest("Novedad actualizada correctamente");
-      edit.value = false;
-      prompt.value = false;
-      cleanForm();
-      await getNewsByInstructor();
-    }
-  });
-  $q.loading.hide();
-  loading.value = false;
-  myForm.value.resetValidation();
+  try {
+    await put(`/news/update/${index.value}`, formData).then(async (res) => {
+      if (res) {
+        notifySuccessRequest("Novedad actualizada correctamente");
+        edit.value = false;
+        prompt.value = false;
+        cleanForm();
+        await getNewsByInstructor();
+      }
+    });
+    myForm.value.resetValidation();
+  } finally {
+    $q.loading.hide();
+    loading.value = false;
+  }
 }
 
 async function activarDesactivar(data) {
@@ -1057,7 +1060,6 @@ async function activarDesactivar(data) {
 }
 
 async function showDialogProcess(id = null) {
-  console.log(id);
   dialogProcess.value = !dialogProcess.value;
   idProcess.value = id;
 
@@ -1153,14 +1155,12 @@ async function getNewsByInstructor() {
       index: i + 1,
       ...v,
     }));
-    console.log(rows.value);
     optionsTable.value = rows.value;
 
     filterTable.value = data.news.map((v, i) => ({
       index: i + 1,
       ...v,
     }));
-    console.log(filterTable.value);
     optionsTable.value = rows2.value;
   }
 }
@@ -1170,7 +1170,6 @@ async function getNewsByFiche() {
     const data = await get(`news/fiche/${ficheSelectedConsult.value.value}/items`);
     filterTableConsult.value = data
   } catch (error) {
-    console.log(error);
   }
 }
 
@@ -1192,25 +1191,31 @@ async function showInfo(data) {
 async function aproveNew(id) {
   loading.value = true;
   const instrValue = userStore.newConsult?.value;
-  await put("/news/aprovenew", { newid: id, instr: instrValue }).then(async (res) => {
-    if (res) {
-      prompt.value = false;
-      await getNewsByInstructor();
-    }
-  });
-  loading.value = false;
+  try {
+    await put("/news/aprovenew", { newid: id, instr: instrValue }).then(async (res) => {
+      if (res) {
+        prompt.value = false;
+        await getNewsByInstructor();
+      }
+    });
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function notAproveNew(id) {
   loading.value = true;
   const instrValue = userStore.newConsult?.value;
-  await put("/news/notaprovenew", { newid: id, instr: instrValue }).then(async (res) => {
-    if (res) {
-      prompt.value = false;
-      await getNewsByInstructor();
-    }
-  });
-  loading.value = false;
+  try {
+    await put("/news/notaprovenew", { newid: id, instr: instrValue }).then(async (res) => {
+      if (res) {
+        prompt.value = false;
+        await getNewsByInstructor();
+      }
+    });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function filterAprendiz(val, update, abort) {

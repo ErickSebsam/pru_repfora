@@ -177,7 +177,6 @@ watch(
     rows.value = value;
   }
 );
-console.log(rows.value);
 
 const columns = ref([
   {
@@ -257,7 +256,6 @@ const columns = ref([
 ]);
 
 function showMsgNotImg(file) {
-  console.log(file);
   $q.notify({
     color: "red-10",
     textColor: "white",
@@ -268,7 +266,6 @@ function showMsgNotImg(file) {
 }
 
 function showImg(row) {
-  console.log(row);
   img.value = row.img;
   showDialogImg.value = true;
 }

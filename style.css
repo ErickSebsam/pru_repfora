@@ -183,6 +183,11 @@
   background-color: white;
   color: black;
   font-weight: 600;
+  font-size: 13px;
+}
+
+.my-sticky-header-table tbody td {
+  font-size: 14px;
 }
 
 .my-sticky-header-table thead tr th {

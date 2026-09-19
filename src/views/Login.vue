@@ -84,6 +84,16 @@
           </router-link>
         </q-card-section>
       </q-card>
+
+      <div class="full-width text-center q-mt-md text-caption text-grey-7">
+        <a href="/privacy-policy.html" target="_blank" style="color: #2e7d32">
+          Política de Privacidad
+        </a>
+        ·
+        <a href="/terms-of-service.html" target="_blank" style="color: #2e7d32">
+          Condiciones del Servicio
+        </a>
+      </div>
     </div>
   </q-page>
 </template>
@@ -125,12 +135,15 @@ async function signIn() {
 
   const roleU = userStore.getRole();
 
-  if (
-    userStore.token &&
-    ["PROGRAMADOR", "COORDINADOR", "EVALUADOR", "NOVEDADES"].includes(roleU)
-  )
-    router.replace("/home");
-  else if (userStore.token && roleU == "USER") router.replace("/consultor");
+  if (userStore.token) {
+    if (userStore.getSuper() === 1) {
+      await userStore.fetchStorageSummary();
+    }
+    if (["PROGRAMADOR", "COORDINADOR", "EVALUADOR", "NOVEDADES"].includes(roleU))
+      router.replace("/home");
+    else if (roleU == "USER")
+      router.replace("/consultor");
+  }
 
   loading.value = false;
 }

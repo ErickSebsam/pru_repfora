@@ -106,7 +106,6 @@ const externalTooltipHandler = (context) => {
     return;
   }
 
-  console.log(tooltip.dataPoints);
   const dataIndex = tooltip.dataPoints[0].dataIndex;
   const title = tooltip.dataPoints[0].label;
   let body = tooltip.dataPoints[0].dataset.data;

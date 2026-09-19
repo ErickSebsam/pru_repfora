@@ -717,9 +717,13 @@ async function uploadFile() {
     message: "Cargando información al sistema, por favor no cierre la ventana.",
   });
 
-  const response = await post("/uploads/uploadexceljudgment", formData);
-
-  $q.loading.hide();
+  let response;
+  try {
+    response = await post("/uploads/uploadexceljudgment", formData);
+  } finally {
+    $q.loading.hide();
+  }
+  if (!response) return;
   moreInfo.value = response.moreInfo;
   allData.value = response.dataGroup;
   rows.value = response.dataGroup;

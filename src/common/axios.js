@@ -30,7 +30,7 @@ requestAxios.interceptors.response.use(
     if (error.response && !error.config?.skipErrorNotify) {
       const data = error.response.data;
       const msg =
-        data?.errors?.join(", ") || data?.msg || "Error en la petición";
+        data?.errors?.join(", ") || data?.msg || data?.message || "Error en la petición";
       Notify.create({
         color: "negative",
         message: msg,

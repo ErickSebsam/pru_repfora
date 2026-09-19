@@ -378,38 +378,42 @@ onBeforeMount(async () => {
 
 function getNewsProcceds() {
   loading.value = true;
-  get("/news/onlyprocessed").then((res) => {
-    if (res) {
-      newsOptions.value = res.news;
+  get("/news/onlyprocessed")
+    .then((res) => {
+      if (res) {
+        newsOptions.value = res.news;
 
-      filterNews.value = newsOptions.value.map((v) => {
-        return {
-          label: `${v.tpnew} - ${v.document} - ${v.name}`,
-          value: v._id,
-        };
-      });
-
+        filterNews.value = newsOptions.value.map((v) => {
+          return {
+            label: `${v.tpnew} - ${v.document} - ${v.name}`,
+            value: v._id,
+          };
+        });
+      }
+    })
+    .finally(() => {
       loading.value = false;
-    }
-  });
+    });
 }
 
 function getNewsProccedsNullActa() {
   loading.value = true;
-  get("/news/onlyprocessedactanull").then((res) => {
-    if (res) {
-      newsOptions.value = res.news;
+  get("/news/onlyprocessedactanull")
+    .then((res) => {
+      if (res) {
+        newsOptions.value = res.news;
 
-      filterNews.value = newsOptions.value.map((v) => {
-        return {
-          label: `${v.tpnew} - ${v.document} - ${v.name}`,
-          value: v._id,
-        };
-      });
-
+        filterNews.value = newsOptions.value.map((v) => {
+          return {
+            label: `${v.tpnew} - ${v.document} - ${v.name}`,
+            value: v._id,
+          };
+        });
+      }
+    })
+    .finally(() => {
       loading.value = false;
-    }
-  });
+    });
 }
 
 function getDateFormat() {
@@ -440,7 +444,6 @@ function removeInputAnswer(index) {
 async function saveinfo() {
   let idNews;
 
-  console.log(rows.value);
 
   if (rows.value.length == 0) {
     notifyErrorRequest("Seleccione al menos una novedad");
@@ -455,23 +458,25 @@ async function saveinfo() {
     message: "Actializando novedades, espere por favor...",
   });
 
-  await put("/news/updatemultiple", {
-      news: idNews,
-      answers: answers.value,
-      type: props.type,
-      numberact: acta.value,
-      state: statusSelected.value,
-      processed: aproved.value,
-    })
-    .then((res) => {
-      if (res) {
-        notifySuccessRequest("Novedades actualizadas correctamente");
-        props.showDialogProcess(false);
-      }
-    });
-
-  $q.loading.hide();
-  loading.value = false;
+  try {
+    await put("/news/updatemultiple", {
+        news: idNews,
+        answers: answers.value,
+        type: props.type,
+        numberact: acta.value,
+        state: statusSelected.value,
+        processed: aproved.value,
+      })
+      .then((res) => {
+        if (res) {
+          notifySuccessRequest("Novedades actualizadas correctamente");
+          props.showDialogProcess(false);
+        }
+      });
+  } finally {
+    $q.loading.hide();
+    loading.value = false;
+  }
 }
 
 function addNewToTable() {

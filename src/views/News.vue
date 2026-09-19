@@ -783,7 +783,6 @@ async function getOutcomes() {
 async function getNews() {
   await get("/news").then((res) => {
     if (res) {
-      console.log(res.news);
       dataTable.value = res.news;
       filterTable.value = res.news;
       dataPostponed.value = res.newsPostpone;
@@ -808,14 +807,17 @@ async function getNewsFilter() {
     });
     loading.value = false;
   } else{
-     await get("/news", { dateStart: fStart.value, dateEnd: fEnd.value }).then((res) => {
-    if (res) {
-      dataTable.value = res.news;
-      filterTable.value = res.news;
-      dataPostponed.value = res.newsPostpone;
-    }
-    loading.value = false;
-  });
+     await get("/news", { dateStart: fStart.value, dateEnd: fEnd.value })
+    .then((res) => {
+      if (res) {
+        dataTable.value = res.news;
+        filterTable.value = res.news;
+        dataPostponed.value = res.newsPostpone;
+      }
+    })
+    .finally(() => {
+      loading.value = false;
+    });
   }
 
 }
@@ -926,7 +928,6 @@ function showInfo(data) {
   form.value.center = data.center;
   form.value.city = data.city;
   form.value.workingDay = data.workingday;
-  console.log(form.value);
   edit.value = true;
   prompt.value = true;
   loading.value = false;
@@ -960,44 +961,47 @@ async function postNew() {
     message: "Cargando contenido, esto puede tardar unos segundos...",
   });
 
-  if (form.value.tpNew == "PLAN DE MEJORAMIENTO") {
-    await post("/news/registerimprovement", {
-        tpnew: form.value.tpNew,
-        type: form.value.tpImprovement,
-        tpdocument: form.value.tpDocument,
-        document: form.value.document,
-        name: form.value.name,
-        email: form.value.email,
-        phone: form.value.phone,
-        fiche: form.value.ficheSelected.value,
-        competence: form.value.competence.value,
-        outcome: form.value.outcome.value,
-        fend: form.value.fend,
-        activity: form.value.activity,
-        status: form.value.status,
-        instructor: form.value.instructor.value,
-      })
-      .then(async (res) => {
+  try {
+    if (form.value.tpNew == "PLAN DE MEJORAMIENTO") {
+      await post("/news/registerimprovement", {
+          tpnew: form.value.tpNew,
+          type: form.value.tpImprovement,
+          tpdocument: form.value.tpDocument,
+          document: form.value.document,
+          name: form.value.name,
+          email: form.value.email,
+          phone: form.value.phone,
+          fiche: form.value.ficheSelected.value,
+          competence: form.value.competence.value,
+          outcome: form.value.outcome.value,
+          fend: form.value.fend,
+          activity: form.value.activity,
+          status: form.value.status,
+          instructor: form.value.instructor.value,
+        })
+        .then(async (res) => {
+          if (res) {
+            notifySuccessRequest("Plan de mejoramiento registrado");
+            prompt.value = false;
+            edit.value = false;
+            cleanForm();
+          }
+        });
+    } else {
+      await post("/news/register", formData).then(async (res) => {
         if (res) {
-          notifySuccessRequest("Plan de mejoramiento registrado");
+          notifySuccessRequest("Novedad registrada correctamente");
           prompt.value = false;
           edit.value = false;
           cleanForm();
+          await getNews();
         }
       });
-  } else {
-    await post("/news/register", formData).then(async (res) => {
-      if (res) {
-        notifySuccessRequest("Novedad registrada correctamente");
-        prompt.value = false;
-        edit.value = false;
-        cleanForm();
-        await getNews();
-      }
-    });
+    }
+  } finally {
+    $q.loading.hide();
+    loading.value = false;
   }
-  $q.loading.hide();
-  loading.value = false;
 }
 
 async function putNew() {
@@ -1025,17 +1029,20 @@ async function putNew() {
     message: "Cargando contenido, esto puede tardar unos segundos...",
   });
 
-  await put(`/news/update/${index.value}`, formData).then(async (res) => {
-    if (res) {
-      notifySuccessRequest("Novedad actualizada correctamente");
-      edit.value = false;
-      prompt.value = false;
-      cleanForm();
-      await getNews();
-    }
-  });
-  $q.loading.hide();
-  loading.value = false;
+  try {
+    await put(`/news/update/${index.value}`, formData).then(async (res) => {
+      if (res) {
+        notifySuccessRequest("Novedad actualizada correctamente");
+        edit.value = false;
+        prompt.value = false;
+        cleanForm();
+        await getNews();
+      }
+    });
+  } finally {
+    $q.loading.hide();
+    loading.value = false;
+  }
 }
 
 function onRejected(files) {

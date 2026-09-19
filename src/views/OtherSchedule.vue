@@ -139,7 +139,6 @@ import { get, put } from "../services/api.js";
 
 import BtnBack from "../layouts/btnBackLayout.vue";
 import HeaderLayout from "../layouts/headerViewsLayout.vue";
-import Calander from "../components/PlanningCalendar/ScheduleCalendar.vue";
 
 const $q = useQuasar();
 let instructorSelected = ref("");
@@ -256,7 +255,6 @@ function filterInstructor(val, update, abort) {
 }
 
 async function activarDesactivar(data) {
-  console.log(data);
   
   if (data.status === 0) {
     await put(`/othersschedules/inactive/${data._id}`, null);

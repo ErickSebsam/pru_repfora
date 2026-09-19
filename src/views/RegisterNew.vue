@@ -592,16 +592,18 @@ async function submitForm() {
   });
   loadingBtn.value = true;
 
-  await post("/news/registerpublic", formData).then(async (res) => {
-    if (res) {
-      notifySuccessRequest("Novedad registrada correctamente");
-      cleanForm();
-      success.value = true;
-    }
-  });
-
-  $q.loading.hide();
-  loadingBtn.value = false;
+  try {
+    await post("/news/registerpublic", formData).then(async (res) => {
+      if (res) {
+        notifySuccessRequest("Novedad registrada correctamente");
+        cleanForm();
+        success.value = true;
+      }
+    });
+  } finally {
+    $q.loading.hide();
+    loadingBtn.value = false;
+  }
 }
 
 function clearOtherFields() {

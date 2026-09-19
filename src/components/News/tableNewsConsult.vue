@@ -71,7 +71,6 @@ const $q = useQuasar();
 
 let role = ref(userStore.getRole());
 
-console.log(role.value);
 
 const props = defineProps({
   dataTable: {
@@ -92,10 +91,8 @@ watch(
   () => props.dataTable,
   (value) => {
     rows.value = value;
-    console.log(rows.value);
   }
 );
-console.log(rows.value);
 
 
 
@@ -265,7 +262,6 @@ const columnsTable = computed(()=>{
 }) 
 
 function showMsgNotImg(file) {
-  console.log(file);
   $q.notify({
     color: "red-10",
     textColor: "white",
@@ -276,7 +272,6 @@ function showMsgNotImg(file) {
 }
 
 function showImg(row) {
-  console.log(row);
   img.value = row.img;
   showDialogImg.value = true;
 }

@@ -958,7 +958,6 @@ function cleanForm() {
 async function getInstructors() {
   loadingInstr.value = true;
   const data = await get("/instructors?status=0");
-  console.log(data);
   if (data) {
     optionsInstructor.value = data.map((v) => ({
       label: v.name,
@@ -974,7 +973,6 @@ async function getInstructors() {
 async function getFiches() {
   loadingFiche.value = true;
   const res = await get("/fiches?status=0");
-  console.log(res);
   if (res) {
     rows.value = res;
     ficheOpt.value = [];
@@ -987,7 +985,6 @@ async function getFiches() {
     });
 
     ficheOptions.value = ficheOpt.value;
-    console.log(ficheOptions.value);
   }
   loadingFiche.value = false;
 }
@@ -997,7 +994,6 @@ async function getCompetences() {
   form.value.competence = "";
   form.value.outcome = "";
   loadingCompetence.value = true;
-  console.log(form.value.ficheSelected);
   const data = await get(`/competences/program/${form.value.ficheSelected.code}`);
   if (data) {
     optionsCompetence.value = data.map((v) => ({
@@ -1125,25 +1121,31 @@ async function showInfo(data) {
 async function aproveNew(id) {
   loading.value = true;
   const instrValue = userStore.newConsult?.value;
-  await put("/news/aprovenew", { newid: id, instr: instrValue }).then(async (res) => {
-    if (res) {
-      prompt.value = false;
-      await getNewsByInstructor();
-    }
-  });
-  loading.value = false;
+  try {
+    await put("/news/aprovenew", { newid: id, instr: instrValue }).then(async (res) => {
+      if (res) {
+        prompt.value = false;
+        await getNewsByInstructor();
+      }
+    });
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function notAproveNew(id) {
   loading.value = true;
   const instrValue = userStore.newConsult?.value;
-  await put("/news/notaprovenew", { newid: id, instr: instrValue }).then(async (res) => {
-    if (res) {
-      prompt.value = false;
-      await getNewsByInstructor();
-    }
-  });
-  loading.value = false;
+  try {
+    await put("/news/notaprovenew", { newid: id, instr: instrValue }).then(async (res) => {
+      if (res) {
+        prompt.value = false;
+        await getNewsByInstructor();
+      }
+    });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function filterAprendiz(val, update, abort) {

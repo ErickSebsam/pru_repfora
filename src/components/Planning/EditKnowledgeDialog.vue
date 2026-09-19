@@ -24,7 +24,23 @@
           CONTENIDO DEL ELEMENTO
         </div>
         
+        <q-select
+          v-if="isEnvironment"
+          v-model="editModel"
+          :options="environmentOptions"
+          filled
+          square
+          color="green-9"
+          class="repfora-input"
+          label="Seleccione un ambiente"
+        >
+          <template v-slot:prepend>
+            <q-icon name="business" style="color: var(--color_header)" />
+          </template>
+        </q-select>
+        
         <q-input
+          v-else
           v-model="editModel"
           type="textarea"
           filled
@@ -70,7 +86,8 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
+import { EnvironmentService } from '../../services/environment.service';
 
 const props = defineProps({
   modelValue: Boolean,
@@ -98,6 +115,19 @@ const icon = computed(() => {
   if (t.includes('ambiente')) return 'business';
   if (t.includes('material')) return 'inventory';
   return 'edit';
+});
+
+const isEnvironment = computed(() => props.title.toLowerCase().includes('ambiente'));
+const environments = ref([]);
+const environmentOptions = computed(() => environments.value.map(e => e.name));
+
+onMounted(async () => {
+  try {
+    const data = await EnvironmentService.getEnvironments();
+    environments.value = data;
+  } catch (error) {
+    console.error('Error fetching environments:', error);
+  }
 });
 
 watch(() => props.modelValue, (newVal) => {

@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <BtnBack route="/home" />
@@ -146,37 +145,40 @@ function cleanData() {
 async function goConsult() {
   loading.value = true;
 
-  if (consult.value.value == "ficha") {
-    if (numfiche.value.trim() !== "") {
-      const data = await post("/reports/validatefiche", {
-        fiche: numfiche.value,
-      });
-      userStore.newConsult = {
-        label: data.fiche[0].number,
-        value: data.fiche[0]._id,
-      };
-      cleanData();
-      router.push("/tipoConsulta/ficha");
+  try {
+    if (consult.value.value == "ficha") {
+      if (numfiche.value.trim() !== "") {
+        const data = await post("/reports/validatefiche", {
+          fiche: numfiche.value,
+        });
+        userStore.newConsult = {
+          label: data.fiche[0].number,
+          value: data.fiche[0]._id,
+        };
+        cleanData();
+        router.push("/tipoConsulta/ficha");
+      }
+    } else {
+      if (email.value.trim() !== "") {
+        const data = await post("/reports/validateinst", {
+          document: numdocument.value,
+          email: email.value,
+        });
+        userStore.token = data.token;
+        userStore.email = data.instructor.email;
+        userStore.newConsult = {
+          label: data.instructor.numdocument,
+          value: data.instructor._id,
+          name: data.instructor.name,
+          phone: data.instructor.phone || "",
+        };
+        cleanData();
+        router.push("/home/instructor");
+      }
     }
-  } else {
-    if (email.value.trim() !== "") {
-      const data = await post("/reports/validateinst", {
-        document: numdocument.value,
-        email: email.value,
-      });
-      userStore.email = data.instructor.email;
-      userStore.newConsult = {
-        label: data.instructor.numdocument,
-        value: data.instructor._id,
-        name:  data.instructor.name,
-        phone: data.instructor.phone || "",
-      };
-      cleanData();
-      router.push("/home/instructor");
-    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 // instructor

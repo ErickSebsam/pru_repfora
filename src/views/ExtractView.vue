@@ -83,6 +83,40 @@
       </div>
     </div>
 
+    <!-- Modal de validación estilo REPFORA -->
+    <q-dialog v-model="showValidationDialog" persistent>
+      <q-card flat bordered style="width: 560px; max-width: 94vw; border-radius: 12px">
+        <q-card-section class="bg-green-10 text-white q-py-md row items-center">
+          <q-avatar color="white" text-color="green-10" :icon="validationDialog?.icon || 'info'" size="40px"
+            class="q-mr-md" />
+          <div>
+            <div class="text-h6 text-weight-bolder text-uppercase">{{ validationDialog?.title }}</div>
+            <div class="text-caption text-green-2">Planeación Pedagógica Automática</div>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <div class="text-body2 text-grey-9" v-html="validationDialog?.message"></div>
+
+          <div v-if="validationDialog?.notice"
+            class="q-pa-md q-mt-md rounded-borders row items-start no-wrap"
+            :class="validationDialog?.noticeType === 'warning' ? 'bg-orange-1 text-orange-9' : 'bg-green-1 text-green-10'"
+            :style="validationDialog?.noticeType === 'warning' ? 'border: 1px solid #ffe082' : 'border: 1px solid #c8e6c9'">
+            <q-icon :name="validationDialog?.noticeType === 'warning' ? 'warning' : 'info'"
+              :color="validationDialog?.noticeType === 'warning' ? 'orange-8' : 'green-9'" size="20px"
+              class="q-mr-sm q-mt-xs" />
+            <div class="text-caption" v-html="validationDialog?.notice"></div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup @click="validationDialog = null" />
+          <q-btn class="bg-green-10 text-white text-weight-bolder" :label="validationDialog?.okLabel"
+            @click="confirmValidationDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </div>
 </template>
 
@@ -105,22 +139,74 @@ const file2 = ref(null);
 const file3 = ref(null);
 const loading = ref(false);
 
+const showValidationDialog = ref(false);
+const validationDialog = ref(null);
+
+const openValidationDialog = (config) => {
+  validationDialog.value = config;
+  showValidationDialog.value = true;
+};
+
+const confirmValidationDialog = () => {
+  const cfg = validationDialog.value;
+  showValidationDialog.value = false;
+  validationDialog.value = null;
+  if (cfg && typeof cfg.onOk === 'function') cfg.onOk();
+};
+
 const handleFile1 = (e) => {
-  file1.value = e.target.files[0];
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+    $q.notify({
+      message: 'Tipo de archivo no permitido. Solo se aceptan documentos PDF.',
+      color: 'red-8',
+      icon: 'warning',
+      position: 'top'
+    });
+    e.target.value = ''; // Limpia el input para que pueda volver a intentar
+    file1.value = null;
+    return;
+  }
+  file1.value = file;
 };
 
 const handleFile2 = (e) => {
-  file2.value = e.target.files[0];
-  // Intentar detectar número de ficha del nombre del archivo
-  const match = file2.value.name.match(/(\d{7})/);
-  if (match) {
-    ficheNumber.value = match[1];
-    $q.notify({ message: `Ficha detectada: ${match[1]}`, color: 'blue-7', timeout: 2000 });
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+    $q.notify({
+      message: 'Tipo de archivo no permitido. Solo se aceptan documentos PDF.',
+      color: 'red-8',
+      icon: 'warning',
+      position: 'top'
+    });
+    e.target.value = '';
+    file2.value = null;
+    return;
   }
+
+  file2.value = file;
 };
 
 const handleFile3 = (e) => {
-  file3.value = e.target.files[0];
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+    $q.notify({
+      message: 'Tipo de archivo no permitido. Solo se aceptan documentos PDF.',
+      color: 'red-8',
+      icon: 'warning',
+      position: 'top'
+    });
+    e.target.value = '';
+    file3.value = null;
+    return;
+  }
+  file3.value = file;
 };
 
 
@@ -147,37 +233,122 @@ const getActiveUserEmail = () => {
 };
 
 const processDocuments = async () => {
-  loading.value = true;
-  try {
-    const finalFiche = ficheNumber.value || 'EXTRACTED_' + Date.now();
-    const leaderEmail = getActiveUserEmail();
+  
+  const name1 = file1.value?.name?.toLowerCase() || '';
+  const name2 = file2.value?.name?.toLowerCase() || '';
+  const name3 = file3.value?.name?.toLowerCase() || '';
 
-    // Ahora enviamos los 3 archivos
-    const response = await PlanningService.extractFromPDFs(file1.value, file2.value, file3.value, finalFiche, leaderEmail);
-    const finalRealFiche = response?.finalFiche || finalFiche;
+ 
+  let ordenIncorrecto = false;
 
-    // Registrar la ficha como creada por el usuario actual
-    if (leaderEmail) {
-      const createdFichesKey = `repfora_created_fiches_${leaderEmail.replace(/[@.]/g, '_')}`;
-      const createdFiches = JSON.parse(localStorage.getItem(createdFichesKey) || '[]');
-      if (!createdFiches.includes(finalRealFiche)) {
-        createdFiches.push(finalRealFiche);
-        localStorage.setItem(createdFichesKey, JSON.stringify(createdFiches));
-      }
-    }
 
-    $q.notify({ message: '¡Extracción exitosa! Redirigiendo...', color: 'green-9', icon: 'check_circle' });
-    router.push({ name: 'planning', query: { fiche: finalRealFiche } });
-  } catch (error) {
-    console.error('Error en extracción:', error);
-    $q.notify({
-      message: 'Error en la extracción. Verifique los archivos o intente de nuevo.',
-      color: 'red-8',
-      icon: 'error'
-    });
-  } finally {
-    loading.value = false;
+  if (name1.includes('proyecto') || name1.includes('equipo') || name1.includes('ejecutor')) {
+    ordenIncorrecto = true;
   }
+
+  if (name2.includes('programa') || name2.includes('estructura') || name2.includes('equipo') || name2.includes('ejecutor')) {
+    ordenIncorrecto = true;
+  }
+ 
+  if (name3.includes('programa') || name3.includes('estructura') || name3.includes('proyecto')) {
+    ordenIncorrecto = true;
+  }
+
+  if (ordenIncorrecto) {
+    $q.notify({
+      message: 'Orden de los documentos incorrectos. Por favor, revise el orden de subida',
+      color: 'orange-9',
+      icon: 'swap_horizontal_circle',
+      timeout: 6000,
+      position: 'top'
+    });
+    return; 
+  }
+
+  // 3. PROCESO DE EXTRACCIÓN (BACKEND)
+  const leaderEmail = getActiveUserEmail();
+
+  const doExtract = async (mergeOptions = {}) => {
+    const finalFiche = ficheNumber.value || 'EXTRACTED_' + Date.now();
+    loading.value = true;
+    try {
+      const response = await PlanningService.extractFromPDFs(
+        file1.value, file2.value, file3.value, finalFiche, leaderEmail, 'fill-missing', mergeOptions
+      );
+      const finalRealFiche = response?.finalFiche || finalFiche;
+
+      $q.notify({ message: '¡Extracción exitosa! Redirigiendo...', color: 'green-9', icon: 'check_circle' });
+      router.push({ name: 'planning', query: { fiche: finalRealFiche } });
+    } catch (error) {
+      console.error('Error en extracción:', error);
+
+      // El backend detectó que la ficha ya tiene información (planeación, ficha u horarios)
+      // y pide confirmación antes de guardar.
+      const data = error.response?.data || {};
+      if (error.response?.status === 409 && data.code === 'MERGE_CONFIRMATION_REQUIRED') {
+        ficheNumber.value = data.fiche || ficheNumber.value;
+        openMergeConfirmation(data);
+        return;
+      }
+
+      const backendMsg = data.message || '';
+      const timeoutMsg = error.code === 'ECONNABORTED' || error.message?.includes('timeout')
+        ? 'La extracción está tardando demasiado. Verifique su conexión e intente de nuevo.'
+        : '';
+      $q.notify({
+        message: backendMsg || timeoutMsg || 'Error en la extracción. Verifique los archivos o intente de nuevo.',
+        color: 'red-8',
+        icon: 'error',
+        timeout: backendMsg ? 10000 : 5000,
+        position: 'top'
+      });
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // Validación cuando la ficha ya tiene planeación, horarios o está registrada.
+  // La extracción solo continúa cuando el usuario acepta el diálogo.
+  const openMergeConfirmation = (data) => {
+    const fiche = data.fiche || '';
+    const programName = data.programName || '';
+    const schedulesCount = Number(data.schedulesCount) || 0;
+    const retry = () => doExtract({ confirmedMerge: true, mergeToken: data.mergeToken });
+
+    if (data.existsPlanning) {
+      openValidationDialog({
+        icon: 'warning',
+        title: 'La planeación ya existe',
+        message: `La planeación de la ficha <b>${fiche}</b> ya existe en Repfora${programName ? ` (${programName})` : ''}.`,
+        notice: `Volver a subirla no borrará la información existente (asignaciones de instructores, programaciones, etc.). Se conservará la información actual y se completará únicamente lo que falte.${schedulesCount > 0 ? ` También se traerán las <b>${schedulesCount}</b> programaciones registradas en Horarios.` : ''}`,
+        noticeType: 'warning',
+        okLabel: 'Continuar y completar',
+        onOk: retry,
+      });
+    } else if (schedulesCount > 0) {
+      openValidationDialog({
+        icon: 'event_available',
+        title: 'La ficha ya tiene horarios programados',
+        message: `La ficha <b>${fiche}</b> ya tiene <b>${schedulesCount}</b> horario(s) programado(s) en Repfora${programName ? ` (${programName})` : ''}.`,
+        notice: 'Se extraerá la información de esos horarios (fechas, jornadas, instructores) y se integrará a la planeación generada, conservando lo que ya está establecido.',
+        noticeType: 'info',
+        okLabel: 'Entendido, continuar',
+        onOk: retry,
+      });
+    } else {
+      openValidationDialog({
+        icon: 'info',
+        title: 'La ficha ya está registrada',
+        message: `La ficha <b>${fiche}</b> ya existe en la base de datos de planeación${programName ? ` (${programName})` : ''}.`,
+        notice: 'Se traerá toda la información existente (fechas, programaciones, datos del programa, etc.) para completar la planeación extraída.',
+        noticeType: 'info',
+        okLabel: 'Entendido, continuar',
+        onOk: retry,
+      });
+    }
+  };
+
+  await doExtract();
 };
 </script>
 

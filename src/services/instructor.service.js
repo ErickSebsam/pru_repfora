@@ -9,10 +9,12 @@ export const InstructorService = {
   /**
    * Verifica cruces de horario de un instructor
    */
-  checkAvailability: (instructorId, dates, shift, currentFiche) => 
+  checkAvailability: (instructorId, dates, shift, currentFiche, tstart = null, tend = null) => 
     get(`/instructors/${instructorId}/availability`, { 
       dates: dates.join(','), 
-      shift, 
-      currentFiche 
+      shift,
+      currentFiche,
+      ...(tstart && { tstart }),
+      ...(tend && { tend })
     })
 };

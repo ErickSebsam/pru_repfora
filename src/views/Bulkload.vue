@@ -355,20 +355,21 @@ async function uploadFile() {
   $q.loading.show({
     message: "Cargando información al sistema, por favor no cierre la ventana.",
   });
-  console.log(program.value);
 
-  if (fileToUpload.value.value == "CYR") {
-    await post(`/uploads/uploadexcel/${program.value.value}`, formData);
-    notifySuccessRequest("Se ha cargado el archivo correctamente");
-  } else {
-    await post("/uploads/uploadexcelinstructor", formData);
-    notifySuccessRequest("Se ha cargado el archivo correctamente");
+  try {
+    if (fileToUpload.value.value == "CYR") {
+      await post(`/uploads/uploadexcel/${program.value.value}`, formData);
+      notifySuccessRequest("Se ha cargado el archivo correctamente");
+    } else {
+      await post("/uploads/uploadexcelinstructor", formData);
+      notifySuccessRequest("Se ha cargado el archivo correctamente");
+    }
+
+    //limpiar campos
+    clearFields();
+  } finally {
+    $q.loading.hide();
   }
-
-  $q.loading.hide();
-
-  //limpiar campos
-  clearFields();
 }
 </script>
 

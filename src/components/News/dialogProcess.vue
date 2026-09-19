@@ -280,8 +280,6 @@ const props = defineProps({
   },
 });
 
-console.log(props.idNew);
-console.log(props.showDialogProcess);
 
 let statusOptions = ref([
   "REGISTRADA",
@@ -317,7 +315,6 @@ function getInfo() {
     if (res) {
       infoNew.value = res;
       tpnew.value = res.tpnew;
-      console.log(tpnew.value);
       dataBaseNew.value = [
         {
           name: "Tipo de Novedad",
@@ -403,7 +400,6 @@ function getDateFormat() {
 }
 
 function addInputAnswer() {
-  console.log(answers.value);
   if (answers.value[0]?.data == "" ) return;
   answers.value.unshift({
     data: "",
@@ -453,21 +449,23 @@ async function updateAdvencedNew() {
 }
 
 async function saveInfo() {
-  await put(`/news/updateadvanced/${props.idNew}`, {
-      answers: answers.value,
-      numberact: acta.value,
-      datesofia: fSopia.value,
-      state: statusSelected.value,
-      processed: aproved.value,
-    })
-    .then((res) => {
-      if (res) {
-        notifySuccessRequest("Novedad actualizada correctamente");
-        props.showDialogProcess();
-      }
-    });
-
-  loading.value = false;
+  try {
+    await put(`/news/updateadvanced/${props.idNew}`, {
+        answers: answers.value,
+        numberact: acta.value,
+        datesofia: fSopia.value,
+        state: statusSelected.value,
+        processed: aproved.value,
+      })
+      .then((res) => {
+        if (res) {
+          notifySuccessRequest("Novedad actualizada correctamente");
+          props.showDialogProcess();
+        }
+      });
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
     

@@ -666,7 +666,6 @@ const dashFiltered = computed(() => {
 
 const procFiltered = computed(() => {
   const s = procSearch.value?.toLowerCase();
-  console.log(vencidosAgrupados.value);
   if (!s) return vencidosAgrupados.value;
   return vencidosAgrupados.value.filter(g =>
     String(g.ficheNumber || "").toLowerCase().includes(s) ||
@@ -690,8 +689,6 @@ const compFiltered = computed(() => {
 async function loadDashboard() {
   loadingDash.value = true;
   const r = await get("/auditoria/resumen-sede");
-  console.log("respuesta dashboard ");
-  console.log(r);
   if (r) {
     dashStats.value = r.data?.estadisticas || {};
     dashFiches.value = r.data?.fichas || [];
@@ -707,9 +704,6 @@ async function loadProceso() {
     get("/auditoria/vencidos/agrupados"),
     get("/auditoria/coordinaciones"),
   ]);
-  console.log("respuesta proceso ");
-  console.log(estadoR);
-  console.log(grR);
   
   if (estadoR) {
     estadoStats.value = estadoR.estadisticas || {};

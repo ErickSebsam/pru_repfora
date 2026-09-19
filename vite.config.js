@@ -15,10 +15,13 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      stream: fileURLToPath(new URL('./src/utils/empty.js', import.meta.url))
+      src: fileURLToPath(new URL('./src', import.meta.url)),
+      stream: fileURLToPath(new URL('./src/utils/planeacion/empty.js', import.meta.url))
     }
   },
   server: {
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true
   }
 });

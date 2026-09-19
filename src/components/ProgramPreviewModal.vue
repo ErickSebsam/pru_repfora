@@ -86,7 +86,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { usePlanningStore } from '../store/planning.store';
-import { getMonthName } from '../utils/dateUtils';
+import { getMonthName } from '../utils/planeacion/dateUtils';
 
 const store = usePlanningStore();
 const currentMonth = ref(new Date().getMonth());

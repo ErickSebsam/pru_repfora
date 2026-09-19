@@ -66,16 +66,16 @@ export const routes = [
     name: "homeInstructor",
     component: () => import("../views/HomeInstructors.vue"),
     meta: {
-      rol: ["USER", "PROGRAMADOR", "COORDINADOR"],
+      rol: ["USER", "PROGRAMADOR", "COORDINADOR", "INSTRUCTOR"],
     },
     beforeEnter: auth,
   },
   {
     path: "/complementarias",
     name: "complementarias",
-    component: () => import("../views/LoginComplementarias.vue"),
+    component: () => import("../views/LoginVerifyCode.vue"),
     meta: {
-      rol: ["USER", "PROGRAMADOR", "COORDINADOR", "ADMIN"],
+      rol: ["USER", "PROGRAMADOR", "COORDINADOR", "ADMIN", "INSTRUCTOR"],
     },
     beforeEnter: auth,
   },
@@ -366,11 +366,29 @@ export const routes = [
     },
     beforeEnter: auth,
   },
+  {
+    path: "/pedagogias",
+    name: "pedagogias",
+    component: () => import("../views/PedagogiasView.vue"),
+    meta: {
+      rol: ["PROGRAMADOR", "COORDINADOR", "USER", "ADMIN", "INSTRUCTOR"],
+    },
+    beforeEnter: auth,
+  },
+  {
+    path: "/notifications",
+    name: "notifications",
+    component: () => import("../views/NotificationsView.vue"),
+    meta: {
+      rol: ["PROGRAMADOR", "COORDINADOR"],
+    },
+    beforeEnter: auth,
+  },
 
   {
     path: "/home/complementarias",
     name: "homeComplementarias",
-    component: () => import("../views/HomeComplementarias.vue"),
+    component: () => import("../views/InicioComplementariasInstructor.vue"),
     meta: { rol: ["USER", "INSTRUCTOR"] },
     beforeEnter: auth,
   },
@@ -390,6 +408,22 @@ export const routes = [
     meta: {
       rol: ["PROGRAMADOR", "COORDINADOR", "USER", "ADMIN", "INSTRUCTOR"],
     },
+    beforeEnter: auth,
+  },
+  {
+    path: "/planning-shifts",
+    name: "planning-shifts",
+    component: () => import("../views/PlanningShifts.vue"),
+    meta: {
+      rol: ["PROGRAMADOR", "COORDINADOR"],
+    },
+    beforeEnter: auth,
+  },
+  {
+    path: "/home/complementarias/admin",
+    name: "homeComplementariasAdmin",
+    component: () => import("../views/InicioComplementariasAdmin.vue"),
+    meta: { rol: ["PROGRAMADOR", "COORDINADOR"] },
     beforeEnter: auth,
   },
   {

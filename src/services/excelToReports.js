@@ -282,7 +282,6 @@ export const excelToReports = async (data) => {
     await writeFileXLSX(wb, "Reporte.xlsx");
     notifySuccessRequest("Excel generado correctamente");
   } catch (error) {
-    console.log(error);
     notifyErrorRequest("Error al generar el excel");
   }
 };

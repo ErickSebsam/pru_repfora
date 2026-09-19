@@ -556,33 +556,35 @@ async function validateInfo() {
     fend: fEnd.value,
   };
 
-  if (idSchedule.value) {
-    const res = await postRaw(
-      "/othersschedules/validateeditschedule/" + idSchedule.value,
-      data
-    );
-    if (res.data.msg) {
-      notifyWarningRequest(res.data.msg);
+  try {
+    if (idSchedule.value) {
+      const res = await postRaw(
+        "/othersschedules/validateeditschedule/" + idSchedule.value,
+        data
+      );
+      if (res.data.msg) {
+        notifyWarningRequest(res.data.msg);
+      }
+      if (res.data) {
+        diasProgramados.value = res.data.events;
+        calendarOptions.value.events = res.data.events;
+      }
+    } else {
+      const res = await postRaw(
+        "/othersschedules/validateschedule",
+        data
+      );
+      if (res.data.msg) {
+        notifyWarningRequest(res.data.msg);
+      }
+      if (res.data) {
+        diasProgramados.value = res.data.events;
+        calendarOptions.value.events = res.data.events;
+      }
     }
-    if (res.data) {
-      diasProgramados.value = res.data.events;
-      calendarOptions.value.events = res.data.events;
-    }
-  } else {
-    const res = await postRaw(
-      "/othersschedules/validateschedule",
-      data
-    );
-    if (res.data.msg) {
-      notifyWarningRequest(res.data.msg);
-    }
-    if (res.data) {
-      diasProgramados.value = res.data.events;
-      calendarOptions.value.events = res.data.events;
-    }
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 async function getInstructors() {
@@ -635,10 +637,13 @@ async function saveData() {
 
   dataShedule.events = diasProgramados.value;
 
-  await post("/othersschedules/register", dataShedule);
-  notifySuccessRequest("Programación guardada correctamente");
-  clearFields();
-  loading.value = false;
+  try {
+    await post("/othersschedules/register", dataShedule);
+    notifySuccessRequest("Programación guardada correctamente");
+    clearFields();
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function updateData() {
@@ -660,13 +665,14 @@ async function updateData() {
 
   dataSchedule.events = diasProgramados.value;
 
-  await put("/othersschedules/update/" + idSchedule.value, dataSchedule);
-  notifySuccessRequest("Programación actualizada correctamente");
-  loading.value = false;
-  clearFields();
-  $router.back();
-
-  loading.value = false;
+  try {
+    await put("/othersschedules/update/" + idSchedule.value, dataSchedule);
+    notifySuccessRequest("Programación actualizada correctamente");
+    clearFields();
+    $router.back();
+  } finally {
+    loading.value = false;
+  }
 }
 
 const clearDataCalender = () => {

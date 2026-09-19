@@ -88,7 +88,6 @@ export async function exportHoursToExcel(data, month, nameFile, form) {
     await writeFileXLSX(wb, `${nameFile}.xlsx`);
     notifySuccessRequest("Excel generado correctamente");
   } catch (error) {
-    console.log(error);
     notifyErrorRequest("Error al generar el excel");
   }
 }
