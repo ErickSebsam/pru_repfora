@@ -161,6 +161,13 @@ const menu = ref([
     route: "/home/complementarias/admin",
     roles: ["PROGRAMADOR", "COORDINADOR"],
   },
+  {
+  name: "planeación",
+  icon: "event_note",
+  route: "/planning-dashboard",
+  roles: ["PROGRAMADOR", "COORDINADOR"],
+  },
+  
 ]);
 </script>
 

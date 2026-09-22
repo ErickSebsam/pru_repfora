@@ -30,12 +30,26 @@
       </div>
     </q-card-section>
 
-    <q-expansion-item square header-class="q-pa-none" :class="knowledgeProgress.complete ? 'bg-green-1' : 'bg-orange-1'"
-      class="q-mx-md q-mt-sm q-mb-md rounded-borders overflow-hidden">
+    <!-- ACORDEÓN CON EFECTO SUTIL DE ELEVACIÓN Y HOVER -->
+    <q-expansion-item 
+      square 
+      expand-icon="none"
+      header-class="q-pa-none" 
+      :class="[
+        knowledgeProgress.complete ? 'bg-green-1' : 'bg-orange-1',
+        'accordion-header-custom'
+      ]"
+      class="q-mx-md q-mt-sm q-mb-md rounded-borders overflow-hidden"
+    >
       <template v-slot:header>
-        <q-item-section avatar center>
-          <q-icon :name="knowledgeProgress.complete ? 'check_circle' : 'warning'"
-            :color="knowledgeProgress.complete ? 'green-9' : 'orange-9'" size="26px" margin-left="10px" />
+        <!-- Slot de la izquierda: Únicamente la flecha expandible con estilo propio -->
+        <q-item-section avatar center class="q-pr-none" style="min-width: 40px; margin-left: 6px;">
+          <q-icon 
+            name="expand_more" 
+            :color="knowledgeProgress.complete ? 'green-9' : 'orange-9'" 
+            size="28px" 
+            class="accordion-arrow-custom"
+          />
         </q-item-section>
         <q-item-section>
           <div class="text-weight-bolder text-uppercase"
@@ -46,8 +60,8 @@
         </q-item-section>
       </template>
 
-      <q-card flat square class="bg-grey-1">
-        <q-card-section class="row q-col-gutter-md">
+      <q-card flat square class="bg-grey-1 q-pa-sm">
+        <q-card-section class="row q-col-gutter-md q-pa-sm">
 
           <!-- Saberes Conceptos y Principios -->
           <div class="col-12 col-md-4">
@@ -62,8 +76,7 @@
                   <div class="row items-center q-gutter-x-xs">
                     <q-badge v-if="displayKnowledge.concepts?.length" color="green-9"
                       :label="displayKnowledge.concepts.length" />
-                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                      @click="addListItem('conceptsAndPrinciples', 'Nuevo Concepto')" v-if="canEdit" />
+                     <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                   </div>
                 </div>
                 <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
@@ -95,8 +108,7 @@
                   <div class="row items-center q-gutter-x-xs">
                     <q-badge v-if="displayKnowledge.processes?.length" color="green-9"
                       :label="displayKnowledge.processes.length" />
-                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                      @click="addListItem('processes', 'Nuevo Proceso')" v-if="canEdit" />
+                     <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                   </div>
                 </div>
                 <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
@@ -128,8 +140,7 @@
                   <div class="row items-center q-gutter-x-xs">
                     <q-badge v-if="displayKnowledge.criteria?.length" color="green-9"
                       :label="displayKnowledge.criteria.length" />
-                    <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                      @click="addListItem('evaluationCriteria', 'Nuevo Criterio')" v-if="canEdit" />
+                     <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                   </div>
                 </div>
                 <q-scroll-area style="height: 150px; max-height: 150px;" class="q-pr-sm q-mt-xs"
@@ -160,12 +171,11 @@
                 <div class="row items-center q-gutter-x-xs">
                   <q-badge v-if="academicRequirementsList.length" color="green-9"
                     :label="academicRequirementsList.length" />
-                  <q-btn square flat round dense icon="add" size="xs" color="green-9" @click="addAcademicRequirement"
-                    v-if="canEdit" />
+                  <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                 </div>
               </q-card-section>
               <q-card-section class="q-pt-none q-pb-sm">
-                <q-scroll-area style="height: 150px;" v-if="academicRequirementsList.length">
+                <div class="q-mt-xs" v-if="academicRequirementsList.length">
                   <div v-for="(req, idx) in academicRequirementsList" :key="idx"
                     class="row items-center no-wrap q-my-xs">
                     <div class="col text-caption text-grey-9 text-uppercase" style="white-space: pre-wrap;">• {{ req }}
@@ -175,7 +185,7 @@
                     <q-btn square flat round dense icon="delete" size="xs" color="red-8"
                       @click="removeAcademicRequirement(idx)" v-if="canEdit" />
                   </div>
-                </q-scroll-area>
+                </div>
                 <div class="text-caption text-orange-9 q-pl-md" v-else>⚠ Falta definir</div>
               </q-card-section>
             </q-card>
@@ -200,13 +210,11 @@
                     <div class="row items-center q-gutter-x-xs">
                       <q-badge v-if="act.didacticStrategies?.length" color="green-9"
                         :label="act.didacticStrategies.length" />
-                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                        @click="addListItem(act.didacticStrategies, 'Nueva Estrategia')"
-                        v-if="store.isLeader || isMyActivity(act)" />
+                      <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                     </div>
                   </div>
                   <div v-for="(s, idx) in act.didacticStrategies" :key="idx" class="row items-center no-wrap q-my-xs">
-                    <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>
+                    <div class="col text-caption text-grey-9 text-uppercase">- {{ s }}</div>  
                     <q-btn square flat round dense icon="edit" size="xs" color="blue-8"
                       @click="editListItem(act.didacticStrategies, idx, 'Editar Estrategia')"
                       v-if="store.isLeader || isMyActivity(act)" />
@@ -231,9 +239,7 @@
                     <div class="row items-center q-gutter-x-xs">
                       <q-badge v-if="act.learningEvidences?.length" color="green-9"
                         :label="act.learningEvidences.length" />
-                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                        @click="addListItem(act.learningEvidences, 'Nueva Evidencia')"
-                        v-if="store.isLeader || isMyActivity(act)" />
+                     <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                     </div>
                   </div>
                   <div v-for="(e, idx) in act.learningEvidences" :key="idx" class="row items-center no-wrap q-my-xs">
@@ -281,9 +287,7 @@
                     <div class="row items-center q-gutter-x-xs">
                       <q-badge v-if="act.environment?.materials?.length" color="green-9"
                         :label="act.environment.materials.length" />
-                      <q-btn square flat round dense icon="add" size="xs" color="green-9"
-                        @click="addListItem(act.environment?.materials, 'Nuevo Material')"
-                        v-if="store.isLeader || isMyActivity(act)" />
+                      <q-btn flat round dense icon="add" size="md" color="grey-10" class="btn-plus-custom" @click="addListItem('processes', 'Añadir Proceso')" v-if="canEdit" />
                     </div>
                   </div>
                   <div v-for="(m, idx) in act.environment?.materials" :key="idx"
@@ -721,5 +725,44 @@ const removeAcademicRequirement = async (index) => {
 
 .border-empty {
   border-left: 4px solid #f57c00 !important;
+}
+
+/* ======================================================== */
+/* EFECTO HOVER: ELEVACIÓN SUTIL Y CAMBIO DE TONO (OSCURECIMIENTO) */
+/* ======================================================== */
+
+.accordion-header-custom {
+  border-left: 1px solid #2e7d32;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter 0.25s ease, 
+              box-shadow 0.25s ease;
+  cursor: pointer;
+  will-change: transform;
+}
+
+/* Al pasar el mouse: baja un poquito, se oscurece sutilmente y muestra una sombra elegante */
+.accordion-header-custom:hover {
+  transform: translateY(4px);
+  filter: brightness(0.95);
+  box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.1), 
+              0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+/* Animación exclusiva de rotación limpia para la flecha */
+.accordion-arrow-custom {
+  font-weight: 900 !important;
+  stroke: currentColor;
+  stroke-width: 1px;
+  transition: transform 0.3s ease !important;
+}
+
+.accordion-arrow-custom.is-open {
+  transform: rotate(180deg);
+}
+.q-expansion-item__toggle-icon {
+  display: none !important;
+}
+.q-expansion-item--expanded .accordion-arrow-custom {
+  transform: rotate(180deg);
 }
 </style>

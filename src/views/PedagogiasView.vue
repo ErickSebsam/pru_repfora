@@ -2,7 +2,7 @@
   <q-layout view="hHh Lpr lFf">
     <q-header elevated class="bg-green-9 text-white">
       <q-toolbar class="q-px-lg" style="height: 64px;">
-        <q-btn flat round dense icon="menu" @click="drawerOpen = !drawerOpen" class="q-mr-sm" />
+        <q-btn flat round dense icon="menu" @click="menuStore.toggleLeftDrawer()" class="q-mr-sm" />
         <q-toolbar-title class="text-weight-bolder text-h6 tracking-wide">
           REPFORA — MÓDULO PEDAGOGÍAS
         </q-toolbar-title>
@@ -16,73 +16,217 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="drawerOpen" show-if-above bordered class="bg-white" :width="350">
-      <q-card flat class="full-height column" style="border-radius: 0; background: white;">
-        <q-card-section class="bg-green-10 text-white q-py-md text-subtitle2 text-weight-bolder text-uppercase">
-          Fichas en Planeación
-        </q-card-section>
-        <q-card-section class="q-py-sm">
-          <q-input dense outlined square v-model="searchFiche" placeholder="Buscar ficha..." class="bg-white">
-            <template #append><q-icon name="search" /></template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-scroll-area class="col q-pa-none" style="height: calc(100vh - 160px);">
-          <q-list v-if="loadingPlannings" class="q-pa-md text-center">
+    <q-page-container class="bg-grey-2">
+      <q-page class="q-px-md q-pb-md">
+        <BtnBack v-if="!selectedPlanning" route="/planning-dashboard" shift-with-menu />
+        <q-page-sticky v-else position="top-left" :offset="[20, 20]" style="z-index: 3000">
+          <q-btn round color="green-10" icon="arrow_back" size="12px" @click="selectedPlanning = null">
+            <q-tooltip class="bg-grey-9">Volver al listado de fichas</q-tooltip>
+          </q-btn>
+        </q-page-sticky>
+
+        <!-- ═══════════════ GRILLA DE FICHAS (ninguna ficha seleccionada) ═══════════════ -->
+        <div v-if="!selectedPlanning" class="column">
+          <!-- Header: icon + title + stats summary -->
+          <div class="row items-center justify-between q-mb-md q-gutter-y-sm">
+            <div class="row items-center q-gutter-x-md">
+              <q-avatar square color="green-9" text-color="white" icon="menu_book" size="52px"
+                style="border-radius: 12px" />
+              <div>
+                <div class="text-h5 text-weight-bolder text-green-10">
+                  Fichas en Planeación
+                </div>
+                <div class="text-subtitle2 text-grey-7">
+                  Selecciona una ficha para consultar y completar la información de la planeación pedagógica.
+                </div>
+              </div>
+            </div>
+
+            <q-card flat bordered class="q-px-md q-py-sm bg-white">
+              <div class="row items-center q-gutter-x-lg">
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon name="description" color="green-9" size="20px" />
+                  <span class="text-weight-bolder">{{ filteredPlannings.length }}</span>
+                  <span class="text-grey-7">fichas</span>
+                </div>
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon name="fiber_manual_record" color="blue-grey-6" size="12px" />
+                  <span class="text-weight-bold">{{ pendientesCount }}</span>
+                  <span class="text-grey-7">pendientes</span>
+                </div>
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon name="fiber_manual_record" color="orange-8" size="12px" />
+                  <span class="text-weight-bold">{{ procesandoCount }}</span>
+                  <span class="text-grey-7">procesando</span>
+                </div>
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon name="fiber_manual_record" color="green-9" size="12px" />
+                  <span class="text-weight-bold">{{ completasCount }}</span>
+                  <span class="text-grey-7">completas</span>
+                </div>
+              </div>
+            </q-card>
+          </div>
+
+          <!-- Filters bar -->
+          <q-card flat bordered class="filters-card q-mb-md bg-white">
+            <div class="filters-container">
+
+              <!-- BUSCADOR -->
+              <div class="filter-group filter-search">
+                <div class="filter-label">Buscar</div>
+                <q-input v-model="searchFiche" outlined dense class="filter-control"
+                  placeholder="Buscar por ficha o programa...">
+                  <template v-slot:prepend>
+                    <q-icon name="search" />
+                  </template>
+                </q-input>
+              </div>
+
+              <!-- ESTADO -->
+              <div class="filter-group filter-status">
+                <div class="filter-label">Estado</div>
+                <div class="status-filter-wrap">
+                  <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'todas'"
+                    :color="estadoFilter === 'todas' ? 'green-9' : 'grey-5'"
+                    :text-color="estadoFilter === 'todas' ? 'white' : 'grey-8'" label="Todas"
+                    @click="estadoFilter = 'todas'" />
+
+                  <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'pendiente'"
+                    :color="estadoFilter === 'pendiente' ? 'blue-grey-6' : 'grey-5'"
+                    :text-color="estadoFilter === 'pendiente' ? 'white' : 'grey-8'" icon="fiber_manual_record"
+                    label="Pendientes" @click="estadoFilter = 'pendiente'" />
+
+                  <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'procesando'"
+                    :color="estadoFilter === 'procesando' ? 'orange-8' : 'grey-5'"
+                    :text-color="estadoFilter === 'procesando' ? 'white' : 'grey-8'" icon="fiber_manual_record"
+                    label="Procesando" @click="estadoFilter = 'procesando'" />
+
+                  <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'completa'"
+                    :color="estadoFilter === 'completa' ? 'green-9' : 'grey-5'"
+                    :text-color="estadoFilter === 'completa' ? 'white' : 'grey-8'" icon="fiber_manual_record"
+                    label="Completas" @click="estadoFilter = 'completa'" />
+                </div>
+              </div>
+
+              <!-- PROGRAMA -->
+              <div class="filter-group filter-program">
+                <div class="filter-label">Programa</div>
+                <q-select v-model="programaFilter" :options="programaOptions" emit-value map-options outlined dense
+                  class="filter-control" />
+              </div>
+
+            </div>
+          </q-card>
+
+          <!-- Loading -->
+          <div v-if="loadingPlannings" class="flex flex-center column q-py-xl">
             <q-spinner-dots color="green-9" size="40px" />
             <div class="text-grey-6 q-mt-sm">Cargando fichas...</div>
-          </q-list>
-          <q-list v-else-if="filteredPlannings.length === 0" class="q-pa-md text-center">
+          </div>
+
+          <!-- Empty search -->
+          <div v-else-if="filteredPlannings.length === 0" class="flex flex-center column q-py-xl text-grey-6">
             <q-icon name="sentiment_dissatisfied" color="grey-5" size="40px" />
-            <div class="text-grey-6 q-mt-sm">No se encontraron fichas</div>
-          </q-list>
-          <q-list v-else separator class="q-py-xs q-pr-sm">
-            <q-item v-for="plan in filteredPlannings" :key="plan._id || plan.pedagogicalPlanning?.fiche" clickable
-              v-ripple :active="selectedPlanning?.pedagogicalPlanning?.fiche === plan.pedagogicalPlanning?.fiche"
-              active-class="bg-green-9 text-white text-weight-bold" @click="selectPlanning(plan); drawerOpen = false"
-              class="q-py-md">
-              <q-item-section avatar>
-                <q-avatar
-                  :color="selectedPlanning?.pedagogicalPlanning?.fiche === plan.pedagogicalPlanning?.fiche ? 'white' : 'green-9'"
-                  :text-color="selectedPlanning?.pedagogicalPlanning?.fiche === plan.pedagogicalPlanning?.fiche ? 'green-9' : 'white'"
-                  icon="badge" size="40px" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-subtitle2 text-weight-bold">Ficha: {{ plan.pedagogicalPlanning?.fiche
-                }}</q-item-label>
-                <q-item-label caption lines="1"
-                  :class="selectedPlanning?.pedagogicalPlanning?.fiche === plan.pedagogicalPlanning?.fiche ? 'text-green-1' : 'text-grey-7'">
-                  {{ plan.pedagogicalPlanning?.metadata?.programName || 'Sin programa' }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-badge :color="getPlanningFicheStatusColor(plan)" text-color="white"
-                  class="text-weight-bold text-uppercase">
-                  {{ getPlanningFicheStatusLabel(plan) }}
-                </q-badge>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-scroll-area>
-      </q-card>
-    </q-drawer>
+            <div class="q-mt-sm">No se encontraron fichas</div>
+          </div>
 
-    <q-page-container class="bg-grey-2">
-      <q-page class="q-pa-md">
-        <BtnBack route="/planning-dashboard" />
+          <!-- ═══ TABLA DE FICHAS ═══ -->
+          <q-card v-else flat bordered class="bg-white" style="border-radius: 12px; overflow: hidden">
+            <div class="scroll">
+              <table class="scheduler-table fichas-table">
+                <thead>
+                  <tr>
+                    <th style="width: 150px">FICHA</th>
+                    <th>PROGRAMA</th>
+                    <th style="width: 140px">CÓDIGO / VER.</th>
+                    <th style="width: 220px">PROGRESO</th>
+                    <th style="width: 170px; text-align: center">ESTADO</th>
+                    <th style="width: 110px; text-align: center">ACCIÓN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="plan in paginatedPlannings" :key="plan._id || plan.pedagogicalPlanning?.fiche"
+                    @click="selectPlanning(plan); ">
+                    <!-- FICHA -->
+                    <td>
+                      <div class="row items-center no-wrap q-gutter-x-sm">
+                        <q-avatar square color="green-9" text-color="white" icon="badge" size="28px"
+                          style="border-radius: 6px" />
+                        <span class="text-weight-bolder text-caption">
+                          {{ plan.pedagogicalPlanning?.fiche }}
+                        </span>
+                      </div>
+                    </td>
 
-        <q-card v-if="!selectedPlanning" flat bordered class="empty-state bg-white">
-          <q-card-section class="q-pa-xl text-center">
-            <q-icon name="menu_book" color="green-7" size="80px" />
-            <div class="text-h5 text-weight-bolder text-green-10 q-mt-md">Módulo de Pedagogías</div>
-            <div class="text-subtitle1 text-grey-6 q-mt-sm max-text">
-              Selecciona una ficha de la barra lateral para consultar y completar la información de la planeación
-              pedagógica.
+                    <!-- PROGRAMA -->
+                    <td class="text-caption text-grey-9 text-weight-medium">
+                      <div class="ellipsis" style="max-width: 420px">
+                        {{ plan.pedagogicalPlanning?.metadata?.programName || 'Sin programa' }}
+                      </div>
+                    </td>
+
+                    <!-- CÓDIGO / VERSIÓN -->
+                    <td class="text-caption text-grey-7">
+                      {{ plan.pedagogicalPlanning?.metadata?.programCode || '—' }}
+                      <span class="text-grey-5">· v</span>{{ plan.pedagogicalPlanning?.metadata?.version || '1' }}
+                    </td>
+
+                    <!-- PROGRESO -->
+                    <td>
+                      <div class="row items-center q-gutter-x-sm no-wrap">
+                        <q-linear-progress :value="getPlanProgressValue(plan)"
+                          :color="getPlanningFicheStatusColor(plan)" track-color="grey-3"
+                          class="col rounded-borders" style="height: 6px" />
+                        <span class="text-caption text-grey-7 no-wrap">
+                          {{ getPlanConfirmedCount(plan) }}/{{ allActivities(plan).length }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- ESTADO -->
+                    <td class="text-center">
+                      <q-badge rounded :color="getPlanningFicheStatusColor(plan)" text-color="white"
+                        class="text-weight-bold text-uppercase q-px-sm q-py-xs" style="font-size: 9px">
+                        {{ getPlanningFicheStatusLabel(plan) }}
+                      </q-badge>
+                    </td>
+
+                    <!-- ACCIÓN -->
+                    <td class="text-center">
+                      <q-btn flat round dense color="green-9" icon="visibility" size="sm"
+                        @click.stop="selectPlanning(plan)">
+                        <q-tooltip class="bg-green-9 text-weight-bold">Ver planeación</q-tooltip>
+                      </q-btn>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </q-card-section>
-        </q-card>
+          </q-card>
 
-        <div v-else class="column q-gutter-y-md">
+          <!-- ═══ PAGINACIÓN ═══ -->
+          <div v-if="!loadingPlannings && filteredPlannings.length > 0"
+            class="row items-center justify-between q-mt-md q-gutter-y-sm">
+            <div class="text-caption text-grey-7">
+              Mostrando {{ rangeStart }}–{{ rangeEnd }} de {{ filteredPlannings.length }} fichas
+            </div>
+
+            <div class="row items-center q-gutter-x-md">
+              <div class="row items-center q-gutter-x-sm">
+                <span class="text-caption text-grey-7">Por página</span>
+                <q-select dense outlined square v-model="itemsPerPage" :options="[8, 12, 24, 48]"
+                  style="width: 86px" />
+              </div>
+
+              <q-pagination v-model="currentPage" :max="totalPages" :max-pages="6" boundary-numbers direction-links
+                unelevated color="grey-7" active-color="green-9" active-text-color="white" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ WORKSPACE DE LA FICHA SELECCIONADA ═══════════════ -->
+        <div v-else class="column q-gutter-y-md q-mt-lg">
           <q-card square class="shadow-5 bg-white">
             <q-card-section class="row items-center justify-between q-py-md bg-green-10">
               <div>
@@ -110,209 +254,297 @@
               <div class="text-caption text-grey-7">Desplaza horizontalmente para consultar todas las columnas</div>
             </q-card-section>
 
+            <!-- ── Barra de filtros de la tabla de actividades ── -->
+            <q-card-section class="q-py-sm q-px-md bg-grey-1 border-bottom">
+              <div class="row items-center q-gutter-sm">
+                <q-input dense outlined rounded v-model="tableSearch"
+                  placeholder="Buscar RAP, actividad, competencia..." class="col-12 col-sm"
+                  style="min-width: 220px; max-width: 340px;">
+                  <template v-slot:prepend>
+                    <q-icon name="search" />
+                  </template>
+                </q-input>
+
+                <q-space />
+
+                <span class="text-caption text-grey-7 no-wrap">
+                  {{ filteredRows.length }} / {{ allRows.length }} actividades
+                </span>
+
+                <q-btn v-if="hasActiveTableFilters" no-caps dense flat size="sm" color="grey-8"
+                  icon="filter_alt_off" label="Limpiar filtros" @click="clearTableFilters" />
+              </div>
+            </q-card-section>
+
             <q-card-section class="q-pa-none">
               <div class="table-wrapper">
                 <div class="table-scroll">
                   <table class="pedagogia-table">
                     <thead>
                       <tr>
-                        <th class="base-col">FASE</th>
+                        <th class="base-col">
+                          <div class="th-filter">
+                            <span>FASE</span>
+                            <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                              :class="{ 'is-active': tableFaseFilter }">
+                              <q-menu anchor="bottom right" self="top right">
+                                <q-list dense class="th-filter-list">
+                                  <q-item clickable v-close-popup :active="!tableFaseFilter"
+                                    active-class="th-filter-selected" @click="tableFaseFilter = null">
+                                    <q-item-section>Todas</q-item-section>
+                                  </q-item>
+                                  <q-separator />
+                                  <q-item v-for="opt in faseOptions" :key="opt.value" clickable v-close-popup
+                                    :active="tableFaseFilter === opt.value" active-class="th-filter-selected"
+                                    @click="tableFaseFilter = opt.value">
+                                    <q-item-section>{{ opt.label }}</q-item-section>
+                                  </q-item>
+                                </q-list>
+                              </q-menu>
+                            </q-btn>
+                          </div>
+                        </th>
                         <th class="base-col competencia-col">COMPETENCIA</th>
                         <th class="base-col activity-col">RESULTADO (RAP)</th>
                         <th class="base-col hours-col">HORAS DIRECTAS</th>
                         <th class="base-col days-col">DÍAS ASIGNADOS</th>
-                        <th v-for="col in extraColumns" :key="col.key" class="extra-header">{{ col.label }}</th>
-                        <th class="confirm-header">CONFIRMAR REVISION</th>
+                        <th v-for="col in extraColumns" :key="col.key" class="extra-header">
+                          <template v-if="col.key === 'responsible'">
+                            <div class="th-filter">
+                              <span>{{ col.label }}</span>
+                              <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                                :class="{ 'is-active': tableInstructorFilter }">
+                                <q-menu anchor="bottom right" self="top right">
+                                  <q-list dense class="th-filter-list">
+                                    <q-item clickable v-close-popup :active="!tableInstructorFilter"
+                                      active-class="th-filter-selected" @click="tableInstructorFilter = null">
+                                      <q-item-section>Todos</q-item-section>
+                                    </q-item>
+                                    <q-separator />
+                                    <q-item v-for="opt in instructorOptions" :key="opt.value" clickable v-close-popup
+                                      :active="tableInstructorFilter === opt.value" active-class="th-filter-selected"
+                                      @click="tableInstructorFilter = opt.value">
+                                      <q-item-section>{{ opt.label }}</q-item-section>
+                                    </q-item>
+                                  </q-list>
+                                </q-menu>
+                              </q-btn>
+                            </div>
+                          </template>
+                          <template v-else>{{ col.label }}</template>
+                        </th>
+                        <th class="confirm-header">
+                          <div class="th-filter th-filter-center">
+                            <span>CONFIRMAR REVISION</span>
+                            <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                              :class="{ 'is-active': tableEstadoFilter }">
+                              <q-menu anchor="bottom right" self="top right">
+                                <q-list dense class="th-filter-list">
+                                  <q-item clickable v-close-popup :active="!tableEstadoFilter"
+                                    active-class="th-filter-selected" @click="tableEstadoFilter = null">
+                                    <q-item-section>Todos</q-item-section>
+                                  </q-item>
+                                  <q-separator />
+                                  <q-item v-for="opt in estadoRevisionOptions" :key="opt.value" clickable
+                                    v-close-popup :active="tableEstadoFilter === opt.value"
+                                    active-class="th-filter-selected" @click="tableEstadoFilter = opt.value">
+                                    <q-item-section avatar style="min-width: 22px">
+                                      <q-icon name="fiber_manual_record" :color="opt.color" size="11px" />
+                                    </q-item-section>
+                                    <q-item-section>{{ opt.label }}</q-item-section>
+                                  </q-item>
+                                </q-list>
+                              </q-menu>
+                            </q-btn>
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <template v-for="(phase, phIdx) in selectedPlanning.pedagogicalPlanning?.content || []"
-                        :key="phIdx">
-                        <template v-for="(comp, coIdx) in phase.competencies || []" :key="coIdx">
-                          <template v-for="(rap, rapIdx) in comp.learningOutcomes || []" :key="rapIdx">
-                            <tr v-for="(act, acIdx) in rap.pedagogicalActivities || []" :key="acIdx">
-                              <!--asignacion de fase-->
-                              <td class="base-cell phase-cell">{{ phaseLabel(phase.phase) }}</td>
-                              <!--asignacion de competencia-->
-                              <td class="base-cell">
-                                <div class="text-weight-bold text-green-10">{{ comp.code || '—' }}</div>
-                                <div class="muted small">{{ comp.name || 'Sin nombre' }}</div>
-                              </td>
-                              <!--asignacion de resultado y actividad-->
-                              <td class="base-cell">
-                                <div class="text-weight-bold small">RAP: {{ rap.description || '—' }}</div>
+                      <tr v-for="row in filteredRows"
+                        :key="`${row.phIdx}-${row.coIdx}-${row.rapIdx}-${row.acIdx}`">
+                        <!--asignacion de fase-->
+                        <td class="base-cell phase-cell">{{ phaseLabel(row.phase.phase) }}</td>
+                        <!--asignacion de competencia-->
+                        <td class="base-cell">
+                          <div class="text-weight-bold text-green-10">{{ row.comp.code || '—' }}</div>
+                          <div class="muted small">{{ row.comp.name || 'Sin nombre' }}</div>
+                        </td>
+                        <!--asignacion de resultado y actividad-->
+                        <td class="base-cell">
+                          <div class="text-weight-bold small">RAP: {{ row.rap.description || '—' }}</div>
+                        </td>
+                        <!--asignacion de horas directas-->
+                        <td class="base-cell text-center">
+                          <q-badge outline color="green-9" class="text-weight-bold">{{ directHours(row.act)
+                          }}h</q-badge>
+                        </td>
+                        <!--asignacion de dias programados-->
+                        <td class="base-cell">
+                          <div v-if="row.act.scheduleDetails?.assignedDays?.length">
+                            <div class="text-weight-bold small">{{ row.act.scheduleDetails.assignedDays.length }}
+                              sesiones</div>
+                            <div class="muted tiny">{{ row.act.scheduleDetails.assignedDays.join(', ') }}</div>
+                          </div>
+                          <span v-else class="muted small">Sin programar</span>
+                        </td>
 
-                              </td>
-                              <!--asignacion de horas directas-->
-                              <!-- generado por luis llanos (muestra horas directas asignadas en BD o calculadas segun formula) -->
-                              <td class="base-cell text-center">
-                                <q-badge outline color="green-9" class="text-weight-bold">{{ directHours(act, comp, rap)
-                                }}h</q-badge>
-                              </td>
-                              <!-- fin de implementacion luis llanos -->
-                              <!--asignacion de dias programados-->
-                              <td class="base-cell">
-                                <div v-if="act.scheduleDetails?.assignedDays?.length">
-                                  <div class="text-weight-bold small">{{ act.scheduleDetails.assignedDays.length }}
-                                    sesiones</div>
-                                  <div class="muted tiny">{{ act.scheduleDetails.assignedDays.join(', ') }}</div>
-                                </div>
-                                <span v-else class="muted small">Sin programar</span>
-                              </td>
-
-                              <td v-for="col in extraColumns" :key="col.key" class="extra-cell">
-                                <!--asignacion de actividad de proyecto formativo-->
-                                <template v-if="col.key === 'projectActivity'">
-                                  {{ phase.projectActivity || phase.activity || '—' }}
-                                </template>
-
-                                <!--asignacion de saberes de conceptos y principios-->
-                                <template v-else-if="col.key === 'concepts'">
-                                  <div class="text-preview">
-                                    {{ joinValue(
-                                      comp.knowledge?.conceptsAndPrinciples ||
-                                      comp.knowledge?.conceptos_y_principios ||
-                                      comp.conceptsAndPrinciples
-                                    ) }}
-                                  </div>
-
-                                  <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
-                                    @click="openReadMore(
-                                      joinValue(
-                                        comp.knowledge?.conceptsAndPrinciples ||
-                                        comp.knowledge?.conceptos_y_principios ||
-                                        comp.conceptsAndPrinciples
-                                      ),
-                                      'Saberes de conceptos y principios'
-                                    )" />
-
-                                </template>
-                                <!--asignacion de saberes de proceso-->
-                                <template v-else-if="col.key === 'processes'">
-
-                                  <div class="text-preview">
-                                    {{ joinValue(
-                                      comp.knowledge?.processes ||
-                                      comp.knowledge?.procesos ||
-                                      comp.processes
-                                    ) }}
-                                  </div>
-
-                                  <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
-                                    @click="openReadMore(
-                                      joinValue(
-                                        comp.knowledge?.processes ||
-                                        comp.knowledge?.procesos ||
-                                        comp.processes
-                                      ),
-                                      'Saberes de proceso'
-                                    )" />
-
-                                </template>
-
-                                <!--asignacion de criterios de evaluacion-->
-                                <template v-else-if="col.key === 'criteria'">
-                                  <div class="text-preview">
-                                    {{ joinValue(
-                                      rap.evaluationCriteria?.length
-                                        ? rap.evaluationCriteria
-                                        : (comp.evaluationCriteria?.length ? comp.evaluationCriteria :
-                                          comp.criterios_de_evaluacion)
-                                    ) }}
-                                  </div>
-
-                                  <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
-                                    @click="openReadMore(
-                                      joinValue(
-                                        rap.evaluationCriteria?.length
-                                          ? rap.evaluationCriteria
-                                          : (comp.evaluationCriteria?.length ? comp.evaluationCriteria :
-                                            comp.criterios_de_evaluacion)
-                                      ),
-                                      'Criterios de evaluación'
-                                    )" />
-                                </template>
-
-                                <!--asignacion de actividad de aprendizaje-->
-                                <template v-else-if="col.key === 'learningActivity'">
-                                  {{ act.description || '—' }}
-                                </template>
-
-                                <!--asignacion de horas de trabajo independiente-->
-                                <template v-else-if="col.key === 'independentHours'">
-                                  <q-badge color="green-8" outline>{{ act.hours?.independent ?? 0 }}h</q-badge>
-                                </template>
-
-                                <!--asignacion de descripcion de la evidencia de aprendizaje-->
-                                <template v-else-if="col.key === 'evidence'">
-                                  {{ act.evidenceDescription || act.learningEvidence || act.evidence || '—' }}
-                                </template>
-
-                                <!--asignacion de estrategias didacticas activas-->
-                                <template v-else-if="col.key === 'strategies'">
-                                  {{ joinValue(act.didacticStrategies || act.strategies || act.estrategiasDidacticas) ||
-                                    '—' }}
-                                </template>
-
-                                <!--asignacion de ambiente de aprendizaje-->
-                                <template v-else-if="col.key === 'environment'">
-                                  {{
-                                    act.environment?.type ||
-                                    act.environment?.name ||
-                                    (typeof act.environment === 'string' ? act.environment : null) ||
-                                    '—'
-                                  }}
-                                </template>
-
-                                <!--asignacion de materiales de formacion-->
-                                <template v-else-if="col.key === 'materials'">
-                                  <div class="text-preview">
-                                    {{ joinValue(act.environment?.materials) }}
-                                  </div>
-
-                                  <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
-                                    @click="openReadMore(
-                                      joinValue(act.environment?.materials),
-                                      'Materiales de formación'
-                                    )" />
-                                </template>
-
-                                <!--asignacion de instructor responsable-->
-                                <template v-else-if="col.key === 'responsible'">
-                                  {{ act.responsibleInstructor?.name || act.responsibleInstructor ||
-                                    act.suggestedInstructor?.name || act.instructors?.name || '—' }}
-                                </template>
-
-                                <!--asignacion de observaciones-->
-                                <template v-else-if="col.key === 'observations'">
-                                  {{ act.observations || '—' }}
-                                </template>
-                              </td>
-                              <td class="confirm-cell">
-                                <div class="column items-center q-gutter-xs">
-                                  <q-btn v-if="!isActivityConfirmed(act)" outline color="green-9" icon="check"
-                                    label="Confirmar" no-caps dense class="confirm-action-btn full-width"
-                                    @click="confirmActivity(act)" />
-
-                                  <q-badge v-else color="green-9" class="confirmed-badge full-width justify-center">
-                                    <q-icon name="check_circle" size="15px" class="q-mr-xs" />
-                                    Revisado
-                                  </q-badge>
-
-                                  <q-btn :outline="!(act.comments && act.comments.length > 0)"
-                                    :unelevated="!!(act.comments && act.comments.length > 0)" dense no-caps
-                                    :color="act.comments?.length ? 'green-8' : 'blue-grey-7'" icon="chat"
-                                    :label="act.comments?.length ? `Comentarios (${act.comments.length})` : 'Comentarios'"
-                                    class="comments-action-btn full-width"
-                                    @click="openCommentsDialog(act, comp, rap, phase)">
-                                    <q-tooltip class="bg-grey-9">Ver y agregar comentarios de esta actividad</q-tooltip>
-                                  </q-btn>
-                                </div>
-                              </td>
-                            </tr>
+                        <td v-for="col in extraColumns" :key="col.key" class="extra-cell">
+                          <!--asignacion de actividad de proyecto formativo-->
+                          <template v-if="col.key === 'projectActivity'">
+                            {{ row.phase.projectActivity || row.phase.activity || '—' }}
                           </template>
-                        </template>
-                      </template>
+
+                          <!--asignacion de saberes de conceptos y principios-->
+                          <template v-else-if="col.key === 'concepts'">
+                            <div class="text-preview">
+                              {{ joinValue(
+                                row.comp.knowledge?.conceptsAndPrinciples ||
+                                row.comp.knowledge?.conceptos_y_principios ||
+                                row.comp.conceptsAndPrinciples
+                              ) }}
+                            </div>
+
+                            <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
+                              @click="openReadMore(
+                                joinValue(
+                                  row.comp.knowledge?.conceptsAndPrinciples ||
+                                  row.comp.knowledge?.conceptos_y_principios ||
+                                  row.comp.conceptsAndPrinciples
+                                ),
+                                'Saberes de conceptos y principios'
+                              )" />
+                          </template>
+                          <!--asignacion de saberes de proceso-->
+                          <template v-else-if="col.key === 'processes'">
+                            <div class="text-preview">
+                              {{ joinValue(
+                                row.comp.knowledge?.processes ||
+                                row.comp.knowledge?.procesos ||
+                                row.comp.processes
+                              ) }}
+                            </div>
+
+                            <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
+                              @click="openReadMore(
+                                joinValue(
+                                  row.comp.knowledge?.processes ||
+                                  row.comp.knowledge?.procesos ||
+                                  row.comp.processes
+                                ),
+                                'Saberes de proceso'
+                              )" />
+                          </template>
+
+                          <!--asignacion de criterios de evaluacion-->
+                          <template v-else-if="col.key === 'criteria'">
+                            <div class="text-preview">
+                              {{ joinValue(
+                                row.rap.evaluationCriteria?.length
+                                  ? row.rap.evaluationCriteria
+                                  : (row.comp.evaluationCriteria?.length ? row.comp.evaluationCriteria :
+                                    row.comp.criterios_de_evaluacion)
+                              ) }}
+                            </div>
+
+                            <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
+                              @click="openReadMore(
+                                joinValue(
+                                  row.rap.evaluationCriteria?.length
+                                    ? row.rap.evaluationCriteria
+                                    : (row.comp.evaluationCriteria?.length ? row.comp.evaluationCriteria :
+                                      row.comp.criterios_de_evaluacion)
+                                ),
+                                'Criterios de evaluación'
+                              )" />
+                          </template>
+
+                          <!--asignacion de actividad de aprendizaje-->
+                          <template v-else-if="col.key === 'learningActivity'">
+                            {{ row.act.description || '—' }}
+                          </template>
+
+                          <!--asignacion de horas de trabajo independiente-->
+                          <template v-else-if="col.key === 'independentHours'">
+                            <q-badge color="green-8" outline>{{ row.act.hours?.independent ?? 0 }}h</q-badge>
+                          </template>
+
+                          <!--asignacion de descripcion de la evidencia de aprendizaje-->
+                          <template v-else-if="col.key === 'evidence'">
+                            {{ row.act.evidenceDescription || row.act.learningEvidence || row.act.evidence || '—' }}
+                          </template>
+
+                          <!--asignacion de estrategias didacticas activas-->
+                          <template v-else-if="col.key === 'strategies'">
+                            {{ joinValue(row.act.didacticStrategies || row.act.strategies ||
+                              row.act.estrategiasDidacticas) || '—' }}
+                          </template>
+
+                          <!--asignacion de ambiente de aprendizaje-->
+                          <template v-else-if="col.key === 'environment'">
+                            {{
+                              row.act.learningEnvironment?.name ||
+                              row.act.learningEnvironment?.type ||
+                              (typeof row.act.learningEnvironment === 'string' ? row.act.learningEnvironment : null) ||
+                              row.act.environment?.type ||
+                              row.act.environment?.name ||
+                              (typeof row.act.environment === 'string' ? row.act.environment : null) ||
+                              '—'
+                            }}
+                          </template>
+
+                          <!--asignacion de materiales de formacion-->
+                          <template v-else-if="col.key === 'materials'">
+                            <div class="text-preview">
+                              {{ joinValue(row.act.trainingMaterials || row.act.materials || row.act.materiales) }}
+                            </div>
+
+                            <q-btn flat dense no-caps color="green-9" label="Leer más" class="read-more-btn"
+                              @click="openReadMore(
+                                joinValue(row.act.trainingMaterials || row.act.materials || row.act.materiales),
+                                'Materiales de formación'
+                              )" />
+                          </template>
+
+                          <!--asignacion de instructor responsable-->
+                          <template v-else-if="col.key === 'responsible'">
+                            {{ row.act.responsibleInstructor?.name || row.act.responsibleInstructor ||
+                              row.act.suggestedInstructor?.name || row.act.instructors?.name || '—' }}
+                          </template>
+
+                          <!--asignacion de observaciones-->
+                          <template v-else-if="col.key === 'observations'">
+                            {{ row.act.observations || '—' }}
+                          </template>
+                        </td>
+                        <td class="confirm-cell">
+                          <div class="column items-center q-gutter-xs">
+                            <q-btn v-if="!isActivityConfirmed(row.act)" outline color="green-9" icon="check"
+                              label="Confirmar" no-caps dense class="confirm-action-btn full-width"
+                              @click="confirmActivity(row.act)" />
+
+                            <q-badge v-else color="green-9" class="confirmed-badge full-width justify-center">
+                              <q-icon name="check_circle" size="15px" class="q-mr-xs" />
+                              Revisado
+                            </q-badge>
+
+                            <q-btn :outline="!(row.act.comments && row.act.comments.length > 0)"
+                              :unelevated="!!(row.act.comments && row.act.comments.length > 0)" dense no-caps
+                              :color="row.act.comments?.length ? 'green-8' : 'blue-grey-7'" icon="chat"
+                              :label="row.act.comments?.length ? `Comentarios (${row.act.comments.length})` : 'Comentarios'"
+                              class="comments-action-btn full-width"
+                              @click="openCommentsDialog(row.act, row.comp, row.rap, row.phase)">
+                              <q-tooltip class="bg-grey-9">Ver y agregar comentarios de esta actividad</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr v-if="filteredRows.length === 0">
+                        <td :colspan="5 + extraColumns.length + 1" class="text-center text-grey-6 q-pa-lg">
+                          No se encontraron actividades con los filtros seleccionados.
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -499,27 +731,35 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { PlanningService } from '../services/planning.service';
 import { NotificationService } from '../services/notification.service';
 import { storeUser } from '../store/users.js';
+import { storeMenu } from '../store/menu.store.js';
 import jwt_decode from 'jwt-decode';
 import BtnBack from "../layouts/btnBackLayout.vue";
 
 const $q = useQuasar();
 const router = useRouter();
 const userStore = storeUser();
-const drawerOpen = ref($q.screen.width > 768);
+const menuStore = storeMenu();
+
 const plannings = ref([]);
 const searchFiche = ref('');
+const estadoFilter = ref('todas'); // 'todas' | 'pendiente' | 'procesando' | 'completa'
+const programaFilter = ref(null); // null = todos los programas
 const loadingPlannings = ref(false);
 const loadingSelectedPlanning = ref(false);
 const selectedPlanning = ref(null);
 const notifications = ref([]);
 const showEditor = ref(false);
 const editorTarget = ref(null);
+
+// ── Paginación de la grilla de fichas ──
+const currentPage = ref(1);
+const itemsPerPage = ref(12);
 
 const showCommentsDialog = ref(false);
 const currentCommentsActivity = ref(null);
@@ -598,6 +838,7 @@ const openCommentsDialog = (act, comp, rap, phase) => {
 };
 
 // implementacion de luis llanos (envia comentario de actividad al backend y dispara notificaciones por correo a autor e instructor)
+// implementacion de luis llanos (envia comentario de actividad al backend y dispara notificaciones por correo a autor e instructor)
 const addCommentToActivity = async () => {
   const text = newCommentText.value.trim();
   if (!text || !currentCommentsActivity.value) return;
@@ -656,7 +897,7 @@ const addCommentToActivity = async () => {
       position: 'top',
       timeout: 4000
     });
-  } catch (error) {
+} catch (error) {
     console.error('Error al guardar comentario:', error);
     const index = currentCommentsActivity.value.comments.indexOf(comment);
     if (index !== -1) {
@@ -668,10 +909,11 @@ const addCommentToActivity = async () => {
       icon: 'error',
       position: 'top'
     });
-  } finally {
+} finally {
     savingComment.value = false;
-  }
+}
 };
+// fin de implementacion luis llanos
 // fin de implementacion luis llanos
 
 const deleteCommentFromActivity = (commentIndex) => {
@@ -757,27 +999,36 @@ const isActivityConfirmed = (act) => {
 };
 
 const confirmActivity = async (act) => {
-  act.reviewed = true;
+  $q.dialog({
+    title: 'Confirmar Revisión',
+    message: '¿Estás seguro de que deseas marcar esta actividad como revisada? Esta acción quedará registrada en la planeación.',
+    cancel: { label: 'Cancelar', flat: true, color: 'grey-7' },
+    ok: { label: 'Confirmar', color: 'green-9' },
+    persistent: true
+  }).onOk(async () => {
+    act.reviewed = true;
 
-  try {
-    if (selectedPlanning.value?.pedagogicalPlanning) {
-      await PlanningService.saveDraft({
-        pedagogicalPlanning: selectedPlanning.value.pedagogicalPlanning
+    try {
+      if (selectedPlanning.value?.pedagogicalPlanning) {
+        await PlanningService.saveDraft({
+          pedagogicalPlanning: selectedPlanning.value.pedagogicalPlanning
+        });
+      }
+      $q.notify({
+        message: 'Actividad confirmada como revisada.',
+        color: 'green-9',
+        icon: 'check_circle'
+      });
+    } catch (error) {
+      console.error('Error al persistir confirmación:', error);
+      act.reviewed = false; // rollback si falla el guardado
+      $q.notify({
+        message: 'Error al guardar la confirmación. Inténtalo de nuevo.',
+        color: 'red-8',
+        icon: 'error'
       });
     }
-    $q.notify({
-      message: 'Actividad confirmada como revisada.',
-      color: 'green-9',
-      icon: 'check_circle'
-    });
-  } catch (error) {
-    console.error('Error al persistir confirmación:', error);
-    $q.notify({
-      message: 'Actividad confirmada localmente, pero ocurrió un error al guardar.',
-      color: 'orange-8',
-      icon: 'warning'
-    });
-  }
+  });
 };
 
 const editor = reactive({
@@ -786,14 +1037,75 @@ const editor = reactive({
 });
 
 const unreadNotificationsCount = computed(() => notifications.value.filter(n => !n.read).length);
+
+// ── Filtros de la grilla de fichas ──
 const filteredPlannings = computed(() => {
   const needle = searchFiche.value.trim().toLowerCase();
-  if (!needle) return plannings.value;
   return plannings.value.filter(p => {
     const fiche = String(p.pedagogicalPlanning?.fiche || '').toLowerCase();
     const name = String(p.pedagogicalPlanning?.metadata?.programName || '').toLowerCase();
-    return fiche.includes(needle) || name.includes(needle);
+    const matchesSearch = !needle || fiche.includes(needle) || name.includes(needle);
+
+    const label = getPlanningFicheStatusLabel(p);
+    const matchesEstado =
+      estadoFilter.value === 'todas' ||
+      (estadoFilter.value === 'pendiente' && label === 'PENDIENTE') ||
+      (estadoFilter.value === 'procesando' && label === 'PROCESANDO') ||
+      (estadoFilter.value === 'completa' && label === 'COMPLETO');
+
+    const matchesPrograma =
+      !programaFilter.value ||
+      p.pedagogicalPlanning?.metadata?.programName === programaFilter.value;
+
+    return matchesSearch && matchesEstado && matchesPrograma;
   });
+});
+
+const programaOptions = computed(() => {
+  const names = new Set(
+    plannings.value.map((p) => p.pedagogicalPlanning?.metadata?.programName)
+  );
+  const opciones = [...names]
+    .filter(Boolean)
+    .sort()
+    .map((name) => ({ label: name, value: name }));
+  return [{ label: 'Todos los programas', value: null }, ...opciones];
+});
+
+const pendientesCount = computed(
+  () => plannings.value.filter((p) => getPlanningFicheStatusLabel(p) === 'PENDIENTE').length
+);
+const procesandoCount = computed(
+  () => plannings.value.filter((p) => getPlanningFicheStatusLabel(p) === 'PROCESANDO').length
+);
+const completasCount = computed(
+  () => plannings.value.filter((p) => getPlanningFicheStatusLabel(p) === 'COMPLETO').length
+);
+
+// ── Paginación ──
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredPlannings.value.length / itemsPerPage.value))
+);
+
+const paginatedPlannings = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredPlannings.value.slice(start, start + itemsPerPage.value);
+});
+
+const rangeStart = computed(() =>
+  filteredPlannings.value.length === 0 ? 0 : (currentPage.value - 1) * itemsPerPage.value + 1
+);
+
+const rangeEnd = computed(() =>
+  Math.min(currentPage.value * itemsPerPage.value, filteredPlannings.value.length)
+);
+
+watch([searchFiche, estadoFilter, programaFilter, itemsPerPage], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (max) => {
+  if (currentPage.value > max) currentPage.value = max;
 });
 
 const fetchPlannings = async () => {
@@ -889,10 +1201,18 @@ const allActivities = (plan) => {
 const getPlanningFicheStatusLabel = (plan) => {
   const acts = allActivities(plan);
   if (!acts.length) return 'SIN DATOS';
-  const confirmed = acts.filter(a => (a.suggestedInstructor || a.instructors)?.assignmentStatus === 'confirmed').length;
+  const confirmed = acts.filter(a => a.reviewed === true).length;
   return confirmed === acts.length ? 'COMPLETO' : confirmed ? 'PROCESANDO' : 'PENDIENTE';
 };
 const getPlanningFicheStatusColor = (plan) => ({ COMPLETO: 'green-9', PROCESANDO: 'orange-8', PENDIENTE: 'blue-grey-6' }[getPlanningFicheStatusLabel(plan)] || 'grey-7');
+
+// Progreso de confirmación de una ficha (para la grilla)
+const getPlanConfirmedCount = (plan) => allActivities(plan).filter(a => a.reviewed === true).length;
+const getPlanProgressValue = (plan) => {
+  const total = allActivities(plan).length;
+  if (!total) return 0;
+  return getPlanConfirmedCount(plan) / total;
+};
 
 const openEditor = (phase, comp, rap, act) => {
   editorTarget.value = { phase, comp, rap, act };
@@ -963,6 +1283,114 @@ const handleLogout = () => {
     });
 };
 
+// ── Filtros de la tabla de actividades (ficha seleccionada) ──
+const tableSearch = ref('');
+const tableFaseFilter = ref(null);
+const tableInstructorFilter = ref(null); // nombre del instructor responsable
+const tableEstadoFilter = ref(null); // 'reviewed' | 'pending'
+
+const estadoRevisionOptions = [
+  { value: 'pending', label: 'Pendiente', color: 'blue-grey-6' },
+  { value: 'reviewed', label: 'Revisado', color: 'green-9' }
+];
+
+// Aplana fase → competencia → RAP → actividad en filas simples,
+// conservando los índices originales para las acciones (confirmar, comentarios, etc.)
+const allRows = computed(() => {
+  const rows = [];
+  const content = selectedPlanning.value?.pedagogicalPlanning?.content || [];
+  content.forEach((phase, phIdx) => {
+    (phase.competencies || []).forEach((comp, coIdx) => {
+      (comp.learningOutcomes || []).forEach((rap, rapIdx) => {
+        (rap.pedagogicalActivities || []).forEach((act, acIdx) => {
+          rows.push({ phase, comp, rap, act, phIdx, coIdx, rapIdx, acIdx });
+        });
+      });
+    });
+  });
+  return rows;
+});
+
+const faseOptions = computed(() => {
+  const seen = new Map();
+  allRows.value.forEach((r) => {
+    if (!seen.has(r.phase.phase)) {
+      seen.set(r.phase.phase, phaseLabel(r.phase.phase));
+    }
+  });
+  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+});
+
+const instructorOptions = computed(() => {
+  const seen = new Set();
+  const options = [{ value: '__unassigned__', label: 'Sin asignar' }];
+  allRows.value.forEach((r) => {
+    const name = r.act.responsibleInstructor?.name
+      || (typeof r.act.responsibleInstructor === 'string' ? r.act.responsibleInstructor : '')
+      || r.act.suggestedInstructor?.name
+      || r.act.instructors?.name;
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      options.push({ value: name, label: name });
+    }
+  });
+  return options;
+});
+
+const rowMatchesEstado = (row, estado) => {
+  const reviewed = isActivityConfirmed(row.act);
+  if (estado === 'reviewed') return reviewed;
+  if (estado === 'pending') return !reviewed;
+  return true;
+};
+
+const filteredRows = computed(() => {
+  const needle = tableSearch.value.trim().toLowerCase();
+
+  return allRows.value.filter((row) => {
+    const { comp, rap, act } = row;
+
+    const matchesSearch =
+      !needle ||
+      (rap.description || '').toLowerCase().includes(needle) ||
+      (act.description || '').toLowerCase().includes(needle) ||
+      (comp.code || '').toLowerCase().includes(needle) ||
+      (comp.name || '').toLowerCase().includes(needle);
+
+    const matchesFase = !tableFaseFilter.value || row.phase.phase === tableFaseFilter.value;
+
+    const instructorName = act.responsibleInstructor?.name
+      || (typeof act.responsibleInstructor === 'string' ? act.responsibleInstructor : '')
+      || act.suggestedInstructor?.name
+      || act.instructors?.name;
+    const matchesInstructor =
+      !tableInstructorFilter.value ||
+      (tableInstructorFilter.value === '__unassigned__'
+        ? !instructorName
+        : instructorName === tableInstructorFilter.value);
+
+    const matchesEstado = !tableEstadoFilter.value || rowMatchesEstado(row, tableEstadoFilter.value);
+
+    return matchesSearch && matchesFase && matchesInstructor && matchesEstado;
+  });
+});
+
+const hasActiveTableFilters = computed(
+  () => !!tableSearch.value || !!tableFaseFilter.value || !!tableInstructorFilter.value || !!tableEstadoFilter.value
+);
+
+const clearTableFilters = () => {
+  tableSearch.value = '';
+  tableFaseFilter.value = null;
+  tableInstructorFilter.value = null;
+  tableEstadoFilter.value = null;
+};
+
+// Reinicia los filtros de la tabla cada vez que se entra a una ficha nueva
+watch(selectedPlanning, () => {
+  clearTableFilters();
+});
+
 onMounted(async () => {
   await fetchPlannings();
   fetchNotifications();
@@ -970,9 +1398,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.empty-state,
 .loading-card {
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1094,15 +1520,6 @@ onMounted(async () => {
   color: #333;
 }
 
-/* ACCIONES */
-.actions-col {
-  width: 90px;
-  min-width: 90px;
-  max-width: 90px;
-  text-align: center;
-}
-
-
 .text-preview {
   display: -webkit-box;
   -webkit-line-clamp: 5;
@@ -1209,5 +1626,201 @@ onMounted(async () => {
   color: #333;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ═══ Estilos tomados del módulo Programador (grilla de fichas y filtros) ═══ */
+.border-bottom {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.scheduler-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.scheduler-table th {
+  background-color: #f5f5f5;
+  color: #333333;
+  font-weight: bold;
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 2px solid #e0e0e0;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.scheduler-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #eeeeee;
+  vertical-align: top;
+}
+
+.scheduler-table tr:hover {
+  background-color: #fafafa;
+}
+
+.fichas-table tbody tr {
+  cursor: pointer;
+}
+
+.fichas-table td {
+  padding: 10px;
+}
+
+.fichas-table tbody tr:hover {
+  background-color: #f1f8e9;
+}
+
+/* Filtros dentro de los encabezados de la tabla */
+.th-filter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.th-filter-center {
+  justify-content: center;
+}
+
+.th-filter-btn {
+  color: #9e9e9e !important;
+  flex: 0 0 auto;
+  transition: color 0.15s ease;
+}
+
+.th-filter-btn:hover {
+  color: #616161 !important;
+}
+
+.th-filter-btn.is-active {
+  color: #2e7d32 !important;
+}
+
+:global(.th-filter-list) {
+  min-width: 190px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+:global(.th-filter-selected) {
+  background: #f1f8e9;
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+.filters-card {
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.filters-container {
+  display: grid;
+  grid-template-columns: 1.4fr 1.6fr 1.4fr;
+  gap: 16px;
+  align-items: end;
+  width: 100%;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.filter-label {
+  height: 20px;
+  margin-bottom: 6px;
+  color: #666;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.filter-status {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.filter-control {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+  box-sizing: border-box;
+}
+
+.filter-search .q-field {
+  width: 100%;
+}
+
+.filter-search .q-field__control {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+}
+
+.filter-program .q-field {
+  width: 100%;
+}
+
+.filter-program .q-field__control {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+}
+
+.status-filter-wrap {
+  display: flex;
+  gap: 6px;
+  height: 44px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-filter-btn {
+  flex: 0 1 auto;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 6px !important;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.status-filter-btn .q-btn__content {
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.status-filter-btn .q-icon {
+  font-size: 8px !important;
+}
+
+@media (max-width: 1024px) {
+  .filters-container {
+    grid-template-columns: 1fr 1.5fr;
+  }
+
+  .filter-search,
+  .filter-status,
+  .filter-program {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .filters-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-search,
+  .filter-status,
+  .filter-program {
+    grid-column: span 1;
+  }
 }
 </style>

@@ -143,10 +143,17 @@
       <q-separator />
 
       <!-- Vista Previa de Sesiones -->
-      <q-card-section class="bg-grey-1" v-if="localHours.direct > 0">
+      <q-card-section class="bg-grey-1" v-if="localHours.direct > 0 || hasSavedDays || fichaHasDays">
         <div class="text-subtitle2 text-green-10 text-bold q-mb-md flex items-center text-uppercase">
           <q-icon name="visibility" class="q-mr-sm" />
           VISTA PREVIA Y SELECCIÓN DE SESIONES
+        </div>
+
+        <!-- Aviso: solo se están visualizando los días programados de la ficha -->
+        <div v-if="!localHours.direct && !hasSavedDays && fichaHasDays"
+          class="text-caption text-weight-medium text-green-9 bg-green-1 q-pa-sm q-mb-md border-all flex items-center">
+          <q-icon name="info" size="16px" class="q-mr-xs" />
+          Vista de referencia: los días en rojo ya están programados en otros resultados de la ficha. Ingresa las horas directas para generar las fechas de este resultado.
         </div>
 
         <div v-if="!config.startDate" class="text-grey text-caption q-pa-lg text-center bg-white border-all">
@@ -189,7 +196,7 @@
               </div>
 
               <!-- Indicador de horas programadas -->
-              <div class="day-hours text-weight-bold" v-if="day.session && !day.isHoliday">
+              <div class="day-hours text-weight-bold" v-if="day.session && !day.isHoliday && day.session.horas > 0">
                 <q-badge square color="white" text-color="green-10" dense class="q-px-xs text-weight-bolder"
                   style="font-size: 10px;">
                   {{ day.session.horas }}h
@@ -272,7 +279,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'confirm']);
 
-const isInitialLoad = ref(true);
+// true cuando el usuario edita horas/fecha/jornada/días en el formulario.
+// Mientras sea false, el calendario SIEMPRE muestra los días guardados en BD.
+const userEdited = ref(false);
 
 // --- Metadatos de la ficha ---
 const lectivaStartDate = computed(() => {
@@ -284,16 +293,30 @@ const lectivaEndDate = computed(() => {
   return d ? d.slice(0, 10) : '2025-12-31';
 });
 
+// Clave de identidad de una actividad: descripción + fechas programadas.
+// Sirve para detectar duplicados de la misma programación en el documento.
+const buildActivityKey = (act) => {
+  const desc = ((act?.description || act?.observations) || '').trim().toUpperCase();
+  const days = (act?.scheduleDetails?.assignedDays || []).slice().sort().join(',');
+  return `${desc}||${days}`;
+};
+
 const occupiedDates = computed(() => {
   if (!store.planning) return [];
   const dates = [];
   const content = store.planning.pedagogicalPlanning.content;
+  const currentAct = props.currentActivity;
+  const currentKey = currentAct ? buildActivityKey(currentAct) : null;
 
   content.forEach(phase => {
     phase.competencies.forEach(comp => {
       comp.learningOutcomes.forEach(rap => {
         rap.pedagogicalActivities.forEach(act => {
-          if (props.currentActivity && act === props.currentActivity) return;
+          // Se excluye la actividad que se está editando (por referencia o por
+          // identidad descripción+fechas) para que sus propias fechas ya
+          // programadas NO se marquen como ocupadas, sino como seleccionadas.
+          if (act === currentAct) return;
+          if (currentKey && buildActivityKey(act) === currentKey) return;
           if (act.scheduleDetails && act.scheduleDetails.assignedDays) {
             act.scheduleDetails.assignedDays.forEach(dayStr => dates.push(dayStr));
           }
@@ -337,6 +360,31 @@ const applySuggestedHours = () => {
 };
 
 const savedDetails = props.currentActivity?.scheduleDetails;
+
+// true si la actividad ya tiene días programados guardados en la BD
+// (aunque sus horas directas estén en 0, el calendario debe mostrarlos)
+const hasSavedDays = computed(
+  () => !!(savedDetails?.assignedDays && savedDetails.assignedDays.length > 0)
+);
+
+// true si algún resultado de la ficha ya tiene días programados
+// (para que el calendario se muestre siempre y se puedan ver esos días)
+const fichaHasDays = computed(() => {
+  if (!store.planning) return false;
+  const content = store.planning.pedagogicalPlanning?.content || [];
+  return content.some((phase) =>
+    (phase?.competencies || []).some((comp) =>
+      (comp?.learningOutcomes || []).some((rap) =>
+        (rap?.pedagogicalActivities || []).some(
+          (act) =>
+            act.scheduleDetails &&
+            Array.isArray(act.scheduleDetails.assignedDays) &&
+            act.scheduleDetails.assignedDays.length > 0
+        )
+      )
+    )
+  );
+});
 
 // Deducir días seleccionados de la semana
 const inferSelectedDays = (assignedDays) => {
@@ -500,17 +548,19 @@ const sessions = ref([]);
 watch(
   [() => config.value.startDate, () => config.value.shift, () => config.value.selectedDays, () => localHours.direct, hoursPerDay],
   () => {
-    if (isInitialLoad.value && savedDetails?.assignedDays && savedDetails.assignedDays.length > 0) {
-      if (savedDetails.sessions) {
-        sessions.value = [...savedDetails.sessions];
-      } else {
-        sessions.value = savedDetails.assignedDays.map(dateStr => ({
-          fecha: dateStr,
-          horas: Math.min(hoursPerDay.value, localHours.direct),
-          festivo: isHoliday(dateStr)
-        }));
-      }
-      isInitialLoad.value = false;
+    const savedDays = savedDetails?.assignedDays || [];
+
+    // Mientras el usuario no haya editado el formulario, mostrar SIEMPRE
+    // los días guardados en BD (sin importar si las horas están en 0 o si
+    // el watch se vuelve a disparar por la carga de jornadas).
+    if (savedDays.length > 0 && !userEdited.value) {
+      sessions.value = savedDetails.sessions
+        ? [...savedDetails.sessions]
+        : savedDays.map((dateStr) => ({
+            fecha: dateStr,
+            horas: Math.min(hoursPerDay.value, localHours.direct) || 0,
+            festivo: isHoliday(dateStr),
+          }));
       return;
     }
 
@@ -528,10 +578,23 @@ watch(
       globalVacations.value,
       hoursPerDay.value
     ).filter(s => s.fecha >= lectivaStartDate.value && s.fecha <= lectivaEndDate.value);
-
-    isInitialLoad.value = false;
   },
   { immediate: true, deep: true }
+);
+
+// Detectar edición del usuario: desde ese momento las sesiones se generan
+// a partir del formulario en lugar de mostrar los días guardados en BD.
+watch(
+  () => [
+    localHours.direct,
+    localHours.independent,
+    config.value.startDate,
+    config.value.shift,
+    config.value.selectedDays,
+  ],
+  () => {
+    userEdited.value = true;
+  }
 );
 
 const effectiveSessions = computed(() => sessions.value.filter((s) => !s.festivo).length);
@@ -602,15 +665,30 @@ const currentYear = ref(new Date().getFullYear());
 const calendarWeekDays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const monthName = computed(() => getMonthName(currentMonth.value));
 
-watch(() => config.value.startDate, (newVal) => {
-  if (newVal) {
-    const d = new Date(newVal + 'T00:00:00');
+// Día de referencia para abrir el calendario en el mes correcto:
+// 1) el propio día guardado de la actividad, 2) el primer día programado
+// de toda la ficha, 3) la fecha de inicio del formulario.
+const getReferenceDateForView = () => {
+  if (savedDetails?.startDate) return savedDetails.startDate;
+  if (hasSavedDays.value) return savedDetails.assignedDays[0];
+  const ficheDays = occupiedDates.value;
+  if (ficheDays.length > 0) return [...ficheDays].sort()[0];
+  return config.value.startDate || null;
+};
+
+watch(
+  () => [config.value.startDate, hasSavedDays.value, store.planning],
+  () => {
+    const ref = getReferenceDateForView();
+    if (!ref) return;
+    const d = new Date(ref + 'T00:00:00');
     if (!isNaN(d.getTime())) {
       currentMonth.value = d.getMonth();
       currentYear.value = d.getFullYear();
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+);
 
 const calendarDays = computed(() => {
   const year = currentYear.value;
@@ -667,6 +745,17 @@ const calendarDays = computed(() => {
 
 const handleDayClick = (day) => {
   if (!day.currentMonth || day.isOccupied || day.isOutOfRange) return;
+
+  // Vista de referencia (sin horas directas ni días guardados):
+  // no permitir editar hasta que se ingresen las horas
+  if (localHours.direct <= 0 && !hasSavedDays.value) {
+    $q.notify({
+      message: 'Ingresa las horas directas para poder asignar fechas.',
+      color: 'orange-8',
+      position: 'top',
+    });
+    return;
+  }
 
   const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
 

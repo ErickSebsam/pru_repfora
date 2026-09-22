@@ -3,35 +3,16 @@
     <!-- Topbar matching REPFORA image exactly -->
     <q-header elevated class="bg-green-9 text-white">
       <q-toolbar class="q-px-lg" style="height: 64px">
-        <q-btn
-          flat
-          round
-          dense
-          icon="menu"
-          @click="menuStore.toggleLeftDrawer()"
-          class="q-mr-sm"
-        />
+        <q-btn flat round dense icon="menu" @click="menuStore.toggleLeftDrawer()" class="q-mr-sm" />
 
         <q-toolbar-title class="text-weight-bolder text-h6 tracking-wide">
           REPFORA — MÓDULO PROGRAMADOR
         </q-toolbar-title>
 
         <!-- Notification count badge -->
-        <q-btn
-          flat
-          round
-          dense
-          icon="notifications"
-          class="q-mr-sm"
-          to="/notifications"
-        >
-          <q-badge
-            v-if="unreadNotificationsCount > 0"
-            floating
-            color="orange"
-            rounded
-            >{{ unreadNotificationsCount }}</q-badge
-          >
+        <q-btn flat round dense icon="notifications" class="q-mr-sm" to="/notifications">
+          <q-badge v-if="unreadNotificationsCount > 0" floating color="orange" rounded>{{ unreadNotificationsCount
+          }}</q-badge>
         </q-btn>
 
         <q-btn flat round dense icon="logout" @click="handleLogout">
@@ -42,25 +23,22 @@
 
     <q-page-container class="bg-grey-2">
       <q-page class="q-pa-md">
-        <BtnBack route="/planning-dashboard" shift-with-menu />
+        <BtnBack v-if="!selectedPlanning" route="/planning-dashboard" shift-with-menu />
+        <q-page-sticky v-else position="top-left" :offset="[20, 20]" style="z-index: 3000">
+          <q-btn round color="green-10" icon="arrow_back" size="12px" @click="selectedPlanning = null">
+            <q-tooltip class="bg-grey-9">Volver al listado de fichas</q-tooltip>
+          </q-btn>
+        </q-page-sticky>
 
-        <div class="fill-height" style="min-height: calc(100vh - 100px)">
+        <div class="fill-height" :class="{ 'q-mt-lg': selectedPlanning }" style="min-height: calc(100vh - 100px)">
           <div class="column justify-between full-height">
             <!-- ═══════════════ FICHAS GRID (no ficha selected) ═══════════════ -->
-            <div v-if="!selectedPlanning" class="column">
+            <div v-if="!selectedPlanning" class="column q-mt-lg">
               <!-- Header: icon + title + stats summary -->
-              <div
-                class="row items-center justify-between q-mb-md q-gutter-y-sm"
-              >
+              <div class="row items-center justify-between q-mb-md q-gutter-y-sm">
                 <div class="row items-center q-gutter-x-md">
-                  <q-avatar
-                    square
-                    color="green-9"
-                    text-color="white"
-                    icon="description"
-                    size="52px"
-                    style="border-radius: 12px"
-                  />
+                  <q-avatar square color="green-9" text-color="white" icon="description" size="52px"
+                    style="border-radius: 12px" />
                   <div>
                     <div class="text-h5 text-weight-bolder text-green-10">
                       Fichas en Planeación
@@ -96,175 +74,165 @@
               </div>
 
               <!-- Filters bar -->
-              <q-card flat bordered class="q-pa-md q-mb-md bg-white">
-                <div class="row items-center q-col-gutter-md">
-                  <div class="col-12 col-md-4">
-                    <q-input
-                      dense
-                      outlined
-                      square
-                      v-model="searchFiche"
-                      placeholder="Buscar por ficha o programa..."
-                    >
+              <q-card flat bordered class="filters-card q-mb-md bg-white">
+                <div class="filters-container">
+
+                  <!-- BUSCADOR -->
+                  <div class="filter-group filter-search">
+                    <div class="filter-label">
+                      Buscar
+                    </div>
+
+                    <q-input v-model="searchFiche" outlined dense class="filter-control"
+                      placeholder="Buscar por ficha o programa...">
                       <template v-slot:prepend>
                         <q-icon name="search" />
                       </template>
                     </q-input>
                   </div>
 
-                  <div class="col-12 col-md-5">
-                    <div class="text-caption text-grey-7 q-mb-xs">Estado</div>
-                    <div class="row q-gutter-x-sm">
-                      <q-btn
-                        no-caps
-                        unelevated
-                        rounded
-                        :outline="estadoFilter !== 'todas'"
+                  <!-- ESTADO -->
+                  <!-- ESTADO -->
+                  <div class="filter-group filter-status">
+                    <div class="filter-label">Estado</div>
+
+                    <div class="status-filter-wrap">
+                      <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'todas'"
                         :color="estadoFilter === 'todas' ? 'green-9' : 'grey-5'"
-                        :text-color="estadoFilter === 'todas' ? 'white' : 'grey-8'"
-                        label="Todas"
-                        @click="estadoFilter = 'todas'"
-                      />
-                      <q-btn
-                        no-caps
-                        unelevated
-                        rounded
-                        :outline="estadoFilter !== 'pendiente'"
+                        :text-color="estadoFilter === 'todas' ? 'white' : 'grey-8'" label="Todas"
+                        @click="estadoFilter = 'todas'" />
+
+                      <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'pendiente'"
                         :color="estadoFilter === 'pendiente' ? 'orange-8' : 'grey-5'"
-                        :text-color="estadoFilter === 'pendiente' ? 'white' : 'grey-8'"
-                        icon="fiber_manual_record"
-                        label="Pendientes"
-                        @click="estadoFilter = 'pendiente'"
-                      />
-                      <q-btn
-                        no-caps
-                        unelevated
-                        rounded
-                        :outline="estadoFilter !== 'completa'"
+                        :text-color="estadoFilter === 'pendiente' ? 'white' : 'grey-8'" icon="fiber_manual_record"
+                        label="Pendientes" @click="estadoFilter = 'pendiente'" />
+
+                      <q-btn no-caps unelevated dense class="status-filter-btn" :outline="estadoFilter !== 'completa'"
                         :color="estadoFilter === 'completa' ? 'green-9' : 'grey-5'"
-                        :text-color="estadoFilter === 'completa' ? 'white' : 'grey-8'"
-                        icon="fiber_manual_record"
-                        label="Completas"
-                        @click="estadoFilter = 'completa'"
-                      />
+                        :text-color="estadoFilter === 'completa' ? 'white' : 'grey-8'" icon="fiber_manual_record"
+                        label="Completas" @click="estadoFilter = 'completa'" />
                     </div>
                   </div>
 
-                  <div class="col-12 col-md-3">
-                    <div class="text-caption text-grey-7 q-mb-xs">Programa</div>
-                    <q-select
-                      dense
-                      outlined
-                      square
-                      v-model="programaFilter"
-                      :options="programaOptions"
-                      emit-value
-                      map-options
-                    />
+                  <!-- PROGRAMA -->
+                  <div class="filter-group filter-program">
+                    <div class="filter-label">
+                      Programa
+                    </div>
+
+                    <q-select v-model="programaFilter" :options="programaOptions" emit-value map-options outlined dense
+                      class="filter-control" />
                   </div>
+
                 </div>
               </q-card>
 
               <!-- Loading -->
-              <div
-                v-if="loadingPlannings"
-                class="flex flex-center column q-py-xl"
-              >
+              <div v-if="loadingPlannings" class="flex flex-center column q-py-xl">
                 <q-spinner-dots color="green-9" size="40px" />
                 <div class="text-grey-6 q-mt-sm">Cargando fichas...</div>
               </div>
 
               <!-- Empty search -->
-              <div
-                v-else-if="filteredPlannings.length === 0"
-                class="flex flex-center column q-py-xl text-grey-6"
-              >
-                <q-icon
-                  name="sentiment_dissatisfied"
-                  color="grey-5"
-                  size="40px"
-                />
+              <div v-else-if="filteredPlannings.length === 0" class="flex flex-center column q-py-xl text-grey-6">
+                <q-icon name="sentiment_dissatisfied" color="grey-5" size="40px" />
                 <div class="q-mt-sm">No se encontraron fichas</div>
               </div>
 
-              <!-- Cards grid -->
-              <div v-else class="row q-col-gutter-md">
-                <div
-                  v-for="plan in filteredPlannings"
-                  :key="plan._id"
-                  class="col-12 col-sm-6 col-md-4"
-                >
-                  <q-card flat bordered class="ficha-card">
-                    <q-card-section
-                      class="row items-start justify-between no-wrap q-pb-none"
-                    >
-                      <div class="row items-center q-gutter-x-sm">
-                        <q-avatar
-                          square
-                          color="green-9"
-                          text-color="white"
-                          icon="apartment"
-                          size="44px"
-                          style="border-radius: 10px"
-                        />
-                        <div>
-                          <div class="text-subtitle1 text-weight-bolder">
-                            FICHA {{ plan.pedagogicalPlanning.fiche }}
+              <!-- ═══ TABLA DE FICHAS ═══ -->
+              <q-card v-else flat bordered class="bg-white" style="border-radius: 12px; overflow: hidden">
+                <div class="scroll">
+                  <table class="scheduler-table fichas-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 150px">FICHA</th>
+                        <th>PROGRAMA</th>
+                        <th style="width: 140px">CÓDIGO / VER.</th>
+                        <th style="width: 220px">PROGRESO</th>
+                        <th style="width: 170px; text-align: center">ESTADO</th>
+                        <th style="width: 110px; text-align: center">ACCIÓN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="plan in paginatedPlannings" :key="plan._id" @click="selectPlanning(plan)">
+                        <!-- FICHA -->
+                        <td>
+                          <div class="row items-center no-wrap q-gutter-x-sm">
+                            <q-avatar square color="green-9" text-color="white" icon="apartment" size="28px"
+                              style="border-radius: 6px" />
+                            <span class="text-weight-bolder text-caption">
+                              {{ plan.pedagogicalPlanning.fiche }}
+                            </span>
                           </div>
-                        </div>
-                      </div>
-                      <q-badge
-                        rounded
-                        :color="getPlanningFicheStatusColor(plan)"
-                        text-color="white"
-                        class="text-weight-bold text-uppercase q-px-sm q-py-xs"
-                        style="font-size: 10px"
-                      >
-                        {{ getPlanningFicheStatusLabel(plan) }}
-                      </q-badge>
-                    </q-card-section>
+                        </td>
 
-                    <q-card-section class="q-pt-sm q-pb-none">
-                      <div
-                        class="text-body2 text-weight-medium text-grey-9 ellipsis-2-lines"
-                        style="min-height: 40px"
-                      >
-                        {{ plan.pedagogicalPlanning.metadata.programName }}
-                      </div>
-                      <div class="text-caption text-grey-6 q-mt-xs">
-                        <strong>Código:</strong>
-                        {{ plan.pedagogicalPlanning.metadata.programCode }}
-                        &nbsp;|&nbsp; <strong>Versión:</strong>
-                        {{ plan.pedagogicalPlanning.metadata.version || "1" }}
-                      </div>
-                    </q-card-section>
+                        <!-- PROGRAMA -->
+                        <td class="text-caption text-grey-9 text-weight-medium">
+                          <div class="ellipsis" style="max-width: 420px">
+                            {{ plan.pedagogicalPlanning.metadata.programName }}
+                          </div>
+                        </td>
 
-                    <q-card-section class="q-pt-md">
-                      <div class="text-caption text-grey-7 q-mb-xs">
-                        {{ getPlanConfirmedCount(plan) }} /
-                        {{ getAllActivitiesFromPlan(plan).length }} actividades
-                        confirmadas
-                      </div>
-                      <q-linear-progress
-                        :value="getPlanProgressValue(plan)"
-                        :color="getPlanningFicheStatusColor(plan)"
-                        track-color="grey-3"
-                        class="rounded-borders"
-                        style="height: 6px"
-                      />
-                    </q-card-section>
+                        <!-- CÓDIGO / VERSIÓN -->
+                        <td class="text-caption text-grey-7">
+                          {{ plan.pedagogicalPlanning.metadata.programCode }}
+                          <span class="text-grey-5">· v</span>{{
+                            plan.pedagogicalPlanning.metadata.version || "1"
+                          }}
+                        </td>
 
-                    <q-card-section class="q-pt-md">
-                      <q-btn
-                        no-caps
-                        unelevated
-                        class="full-width bg-green-9 text-white text-weight-bold"
-                        icon="arrow_forward"
-                        label="Ver programación"
-                        @click="selectPlanning(plan)"
-                      />
-                    </q-card-section>
-                  </q-card>
+                        <!-- PROGRESO -->
+                        <td>
+                          <div class="row items-center q-gutter-x-sm no-wrap">
+                            <q-linear-progress :value="getPlanProgressValue(plan)"
+                              :color="getPlanningFicheStatusColor(plan)" track-color="grey-3"
+                              class="col rounded-borders" style="height: 6px" />
+                            <span class="text-caption text-grey-7 no-wrap">
+                              {{ getPlanConfirmedCount(plan) }}/{{
+                                getAllActivitiesFromPlan(plan).length
+                              }}
+                            </span>
+                          </div>
+                        </td>
+
+                        <!-- ESTADO -->
+                        <td class="text-center">
+                          <q-badge rounded :color="getPlanningFicheStatusColor(plan)" text-color="white"
+                            class="text-weight-bold text-uppercase q-px-sm q-py-xs" style="font-size: 9px">
+                            {{ getPlanningFicheStatusLabel(plan) }}
+                          </q-badge>
+                        </td>
+
+                        <!-- ACCIÓN -->
+                        <td class="text-center">
+                          <q-btn flat round dense color="green-9" icon="visibility" size="sm"
+                            @click.stop="selectPlanning(plan)">
+                            <q-tooltip class="bg-green-9 text-weight-bold">Ver programación</q-tooltip>
+                          </q-btn>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </q-card>
+
+              <!-- ═══ PAGINACIÓN ═══ -->
+              <div v-if="!loadingPlannings && filteredPlannings.length > 0"
+                class="row items-center justify-between q-mt-md q-gutter-y-sm">
+                <div class="text-caption text-grey-7">
+                  Mostrando {{ rangeStart }}–{{ rangeEnd }} de
+                  {{ filteredPlannings.length }} fichas
+                </div>
+
+                <div class="row items-center q-gutter-x-md">
+                  <div class="row items-center q-gutter-x-sm">
+                    <span class="text-caption text-grey-7">Por página</span>
+                    <q-select dense outlined square v-model="itemsPerPage" :options="[8, 12, 24, 48]"
+                      style="width: 86px" />
+                  </div>
+
+                  <q-pagination v-model="currentPage" :max="totalPages" :max-pages="6" boundary-numbers direction-links
+                    unelevated color="grey-7" active-color="green-9" active-text-color="white" />
                 </div>
               </div>
             </div>
@@ -272,13 +240,8 @@
             <!-- ═══════════════ SELECTED FICHE WORKSPACE ═══════════════ -->
             <div v-else class="column q-gutter-y-md col">
               <!-- LOADING STATE FOR PLAN DETAILS -->
-              <q-card
-                v-if="loadingSelectedPlanning"
-                flat
-                bordered
-                class="col flex flex-center text-center bg-white"
-                style="border-radius: 12px; height: 100%"
-              >
+              <q-card v-if="loadingSelectedPlanning" flat bordered class="col flex flex-center text-center bg-white"
+                style="border-radius: 12px; height: 100%">
                 <q-card-section class="q-pa-xl">
                   <q-spinner-cube color="green-9" size="60px" />
                   <div class="text-h6 text-green-10 text-weight-bolder q-mt-md">
@@ -295,13 +258,9 @@
               <template v-else>
                 <!-- Fiche Metadata Card -->
                 <q-card square class="shadow-5 bg-white">
-                  <q-card-section
-                    class="row items-center justify-between q-py-md bg-green-10 border-bottom"
-                  >
+                  <q-card-section class="row items-center justify-between q-py-md bg-green-10 border-bottom">
                     <div>
-                      <div
-                        class="text-subtitle2 text-white text-weight-bolder text-uppercase"
-                      >
+                      <div class="text-subtitle2 text-white text-weight-bolder text-uppercase">
                         PROGRAMA ACADÉMICO
                       </div>
                       <div class="text-h5 text-weight-bolder text-white">
@@ -332,11 +291,8 @@
                         <div class="text-caption text-white">
                           Estado de Programación
                         </div>
-                        <q-chip
-                          :color="isAllConfirmed ? 'green-9' : 'orange-9'"
-                          text-color="white"
-                          class="text-weight-bold text-uppercase"
-                        >
+                        <q-chip :color="isAllConfirmed ? 'green-9' : 'orange-9'" text-color="white"
+                          class="text-weight-bold text-uppercase">
                           {{
                             isAllConfirmed
                               ? "COMPLETA"
@@ -345,18 +301,11 @@
                         </q-chip>
                       </div>
 
-                      <q-btn
-                        class="q-px-lg text-weight-bolder shadow-2 text-uppercase"
-                        :class="
-                          isAllConfirmed
-                            ? 'style-btn hover-grow'
-                            : 'bg-grey-5 text-white'
-                        "
-                        label="PROGRAMAR FICHA"
-                        size="md"
-                        :disabled="!isAllConfirmed"
-                        @click="triggerFicheScheduling"
-                      >
+                      <q-btn class="q-px-lg text-weight-bolder shadow-2 text-uppercase" :class="isAllConfirmed
+                        ? 'style-btn hover-grow'
+                        : 'bg-grey-5 text-white'
+                        " label="PROGRAMAR FICHA" size="md" :disabled="!isAllConfirmed"
+                        @click="triggerFicheScheduling">
                         <q-tooltip class="bg-grey-9 text-weight-bold">
                           {{
                             isAllConfirmed
@@ -373,58 +322,29 @@
                   <!-- Progress Section -->
                   <q-card-section class="q-py-md">
                     <div class="row items-center justify-between q-mb-sm">
-                      <div
-                        class="text-subtitle2 text-grey-8 text-weight-bold flex items-center"
-                      >
-                        <q-icon
-                          name="check_circle_outline"
-                          color="green-9"
-                          class="q-mr-sm"
-                          size="20px"
-                        />
+                      <div class="text-subtitle2 text-grey-8 text-weight-bold flex items-center">
+                        <q-icon name="check_circle_outline" color="green-9" class="q-mr-sm" size="20px" />
                         Progreso de Confirmación:
-                        <strong class="text-green-9 q-ml-xs"
-                          >{{ confirmedCount }} /
+                        <strong class="text-green-9 q-ml-xs">{{ confirmedCount }} /
                           {{ totalActivitiesCount }} actividades
-                          confirmadas</strong
-                        >
+                          confirmadas</strong>
                       </div>
-                      <q-badge
-                        color="green-9"
-                        class="text-weight-bold"
-                        style="font-size: 13px"
-                      >
+                      <q-badge color="green-9" class="text-weight-bold" style="font-size: 13px">
                         {{ completionPercentage }}%
                       </q-badge>
                     </div>
-                    <q-linear-progress
-                      :value="confirmedCount / totalActivitiesCount"
-                      color="green-9"
-                      track-color="grey-3"
-                      class="rounded-borders"
-                      style="height: 10px"
-                    />
+                    <q-linear-progress :value="confirmedCount / totalActivitiesCount" color="green-9"
+                      track-color="grey-3" class="rounded-borders" style="height: 10px" />
                   </q-card-section>
                 </q-card>
 
                 <!-- Notifications Banner Simulator (Pulsing card) -->
                 <transition-group name="slide">
-                  <q-card
-                    v-if="simulatedNotification"
-                    flat
-                    bordered
+                  <q-card v-if="simulatedNotification" flat bordered
                     class="bg-blue-1 border-blue text-blue-10 q-pa-md flex items-center justify-between"
-                    style="border-radius: 12px; border: 1px solid #90caf9"
-                    :key="'notif'"
-                  >
+                    style="border-radius: 12px; border: 1px solid #90caf9" :key="'notif'">
                     <div class="row items-center col q-gutter-x-md">
-                      <q-avatar
-                        color="blue-9"
-                        text-color="white"
-                        icon="send"
-                        size="36px"
-                        class="animate-pulse"
-                      />
+                      <q-avatar color="blue-9" text-color="white" icon="send" size="36px" class="animate-pulse" />
                       <div>
                         <div class="text-weight-bold text-subtitle2">
                           Notificación Enviada de Forma Exitosa 🚀
@@ -432,471 +352,399 @@
                         <div class="text-caption">
                           Se ha notificado vía portal institucional al
                           instructor
-                          <strong>{{ simulatedNotification.instructor }}</strong
-                          >. Se le habilitó el acceso para diligenciar su
+                          <strong>{{ simulatedNotification.instructor }}</strong>. Se le habilitó el acceso para
+                          diligenciar su
                           planeación pedagógica de la ficha
                           <strong>{{
                             selectedPlanning.pedagogicalPlanning.fiche
-                          }}</strong
-                          >.
+                          }}</strong>.
                         </div>
                       </div>
                     </div>
-                    <q-btn
-                      flat
-                      round
-                      icon="close"
-                      size="sm"
-                      color="blue-10"
-                      @click="simulatedNotification = null"
-                    />
+                    <q-btn flat round icon="close" size="sm" color="blue-10" @click="simulatedNotification = null" />
                   </q-card>
                 </transition-group>
 
                 <!-- Activities Table/List -->
-                <q-card
-                  flat
-                  bordered
-                  class="col column bg-white"
-                  style="border-radius: 12px; min-height: 350px"
-                >
+                <q-card flat bordered class="col column bg-white" style="border-radius: 12px; min-height: 350px">
                   <q-card-section
-                    class="bg-grey-1 text-grey-9 q-py-sm text-subtitle2 text-weight-bolder flex justify-between items-center border-bottom"
-                  >
+                    class="bg-grey-1 text-grey-9 q-py-sm text-subtitle2 text-weight-bolder flex justify-between items-center border-bottom">
                     <div>DETALLES DE COMPETENCIAS Y RESULTADOS SUGERIDOS</div>
                     <div class="text-caption text-grey-7">
                       Diligencia la verificación de instructores
                     </div>
                   </q-card-section>
 
+                  <!-- ── Barra de filtros de actividades (compacta) ── -->
+                  <!-- ── Barra: solo buscador ── -->
+                  <q-card-section class="q-py-sm q-px-md bg-grey-1 border-bottom">
+                    <div class="row items-center q-gutter-sm">
+                      <q-input dense outlined rounded v-model="tableSearch"
+                        placeholder="Buscar RAP, actividad, competencia..." class="col-12 col-sm"
+                        style="min-width: 220px; max-width: 340px;">
+                        <template v-slot:prepend>
+                          <q-icon name="search" />
+                        </template>
+                      </q-input>
+
+                      <q-space />
+
+                      <span class="text-caption text-grey-7 no-wrap">
+                        {{ filteredRows.length }} / {{ allRows.length }} actividades
+                      </span>
+
+                      <q-btn v-if="hasActiveTableFilters" no-caps dense flat size="sm" color="grey-8"
+                        icon="filter_alt_off" label="Limpiar filtros" @click="clearTableFilters" />
+                    </div>
+                  </q-card-section>
+
                   <q-card-section class="col q-pa-none scroll">
-                    <table
-                      class="q-table my-sticky-header-table scheduler-table"
-                    >
+                    <table class="q-table my-sticky-header-table scheduler-table">
                       <thead>
                         <tr>
-                          <th style="width: 80px">FASE</th>
-                          <th style="width: 180px">COMPETENCIA</th>
+                          <!-- FASE -->
+                          <th style="width: 110px">
+                            <div class="th-filter">
+                              <span>FASE</span>
+                              <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                                :class="{ 'is-active': tableFaseFilter }">
+                                <q-menu anchor="bottom right" self="top right">
+                                  <q-list dense class="th-filter-list">
+                                    <q-item clickable v-close-popup :active="!tableFaseFilter"
+                                      active-class="th-filter-selected" @click="tableFaseFilter = null">
+                                      <q-item-section>Todas</q-item-section>
+                                    </q-item>
+                                    <q-separator />
+                                    <q-item v-for="opt in faseOptions" :key="opt.value" clickable v-close-popup
+                                      :active="tableFaseFilter === opt.value" active-class="th-filter-selected"
+                                      @click="tableFaseFilter = opt.value">
+                                      <q-item-section>{{ opt.label }}</q-item-section>
+                                    </q-item>
+                                  </q-list>
+                                </q-menu>
+                              </q-btn>
+                            </div>
+                          </th>
+
+                          <!-- COMPETENCIA -->
+                          <th style="width: 190px">
+                            <div class="th-filter">
+                              <span>COMPETENCIA</span>
+                            </div>
+                          </th>
+
                           <th>RESULTADO (RAP) Y ACTIVIDAD</th>
-                          <th style="width: 100px; text-align: center">
-                            HORAS
-                          </th>
+                          <th style="width: 100px; text-align: center">HORAS</th>
                           <th style="width: 150px">DÍAS ASIGNADOS</th>
-                          <th style="width: 180px">INSTRUCTOR ASIGNADO</th>
-                          <th style="width: 140px; text-align: center">
-                            ESTADO
+
+                          <!-- INSTRUCTOR -->
+                          <th style="width: 185px">
+                            <div class="th-filter">
+                              <span>INSTRUCTOR ASIGNADO</span>
+                              <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                                :class="{ 'is-active': tableInstructorFilter }">
+                                <q-menu anchor="bottom right" self="top right">
+                                  <q-list dense class="th-filter-list th-filter-list-wide">
+                                    <q-item clickable v-close-popup :active="!tableInstructorFilter"
+                                      active-class="th-filter-selected" @click="tableInstructorFilter = null">
+                                      <q-item-section>Todos</q-item-section>
+                                    </q-item>
+                                    <q-separator />
+                                    <q-item v-for="opt in instructorOptions" :key="opt.value" clickable v-close-popup
+                                      :active="tableInstructorFilter === opt.value" active-class="th-filter-selected"
+                                      @click="tableInstructorFilter = opt.value">
+                                      <q-item-section class="th-filter-item-text">{{ opt.label }}</q-item-section>
+                                    </q-item>
+                                  </q-list>
+                                </q-menu>
+                              </q-btn>
+                            </div>
                           </th>
-                          <th style="width: 160px; text-align: center">
-                            ACCIONES
+
+                          <!-- ESTADO -->
+                          <th style="width: 150px">
+                            <div class="th-filter th-filter-center">
+                              <span>ESTADO</span>
+                              <q-btn flat dense round size="xs" icon="arrow_drop_down" class="th-filter-btn"
+                                :class="{ 'is-active': tableEstadoFilter }">
+                                <q-menu anchor="bottom right" self="top right">
+                                  <q-list dense class="th-filter-list">
+                                    <q-item clickable v-close-popup :active="!tableEstadoFilter"
+                                      active-class="th-filter-selected" @click="tableEstadoFilter = null">
+                                      <q-item-section>Todos</q-item-section>
+                                    </q-item>
+                                    <q-separator />
+                                    <q-item v-for="opt in estadoOptions" :key="opt.value" clickable v-close-popup
+                                      :active="tableEstadoFilter === opt.value" active-class="th-filter-selected"
+                                      @click="tableEstadoFilter = opt.value">
+                                      <q-item-section avatar style="min-width: 22px">
+                                        <q-icon name="fiber_manual_record" :color="opt.color" size="11px" />
+                                      </q-item-section>
+                                      <q-item-section>{{ opt.label }}</q-item-section>
+                                    </q-item>
+                                  </q-list>
+                                </q-menu>
+                              </q-btn>
+                            </div>
                           </th>
+
+                          <th style="width: 160px; text-align: center">ACCIONES</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <template
-                          v-for="(phase, phIdx) in selectedPlanning
-                            .pedagogicalPlanning.content"
-                          :key="phIdx"
-                        >
-                          <template
-                            v-for="(comp, coIdx) in phase.competencies"
-                            :key="coIdx"
-                          >
-                            <template
-                              v-for="(rap, rapIdx) in comp.learningOutcomes"
-                              :key="rapIdx"
-                            >
-                              <tr
-                                v-for="(
-                                  act, acIdx
-                                ) in rap.pedagogicalActivities"
-                                :key="acIdx"
-                              >
-                                <!-- FASE -->
-                                <td
-                                  class="text-weight-bold text-uppercase text-caption text-grey-7"
-                                >
+                        <tr v-for="row in filteredRows" :key="`${row.phIdx}-${row.coIdx}-${row.rapIdx}-${row.acIdx}`">
+                          <!-- FASE -->
+                          <td class="text-weight-bold text-uppercase text-caption text-grey-7">
+                            {{ getPhaseLabel(row.phase.phase) }}
+                          </td>
+
+                          <!-- COMPETENCIA -->
+                          <td class="text-caption">
+                            <div class="text-weight-bold text-green-10" style="line-height: 1.2">
+                              {{ row.comp.code }}
+                            </div>
+                            <div class="text-grey-7 ellipsis-2-lines" style="font-size: 11px; line-height: 1.1">
+                              {{ row.comp.name }}
+                            </div>
+                          </td>
+
+                          <!-- RAP & ACTIVITY -->
+                          <td>
+                            <div class="text-weight-bolder text-grey-9 text-caption q-mb-xs" style="line-height: 1.2">
+                              RAP: {{ row.rap.description }}
+                            </div>
+                            <div class="text-grey-7 bg-grey-1 q-pa-xs rounded-borders text-caption" style="
+                                font-size: 12px;
+                                line-height: 1.2;
+                                border: 1px solid #f0f0f0;
+                              ">
+                              <strong>Actividad:</strong>
+                              {{
+                                row.act.description ||
+                                row.act.observations ||
+                                "Sin descripción"
+                              }}
+                            </div>
+                          </td>
+
+                          <!-- HORAS -->
+                          <td class="text-center">
+                            <q-badge outline color="green-9" class="text-weight-bold text-caption">
+                              {{ getDisplayHours(row.act) }}h directas
+                            </q-badge>
+                          </td>
+
+                          <!-- DÍAS ASIGNADOS -->
+                          <td>
+                            <div v-if="
+                              row.act.scheduleDetails &&
+                              row.act.scheduleDetails.assignedDays &&
+                              row.act.scheduleDetails.assignedDays.length >
+                              0
+                            " class="cursor-pointer">
+                              <div class="text-weight-bold text-caption text-grey-8">
+                                {{
+                                  row.act.scheduleDetails.assignedDays.length
+                                }}
+                                sesiones
+                              </div>
+                              <div class="text-grey-6 text-caption ellipsis-2-lines"
+                                style="font-size: 10px; line-height: 1">
+                                {{
+                                  formatDaysList(
+                                    row.act.scheduleDetails.assignedDays,
+                                  )
+                                }}
+                              </div>
+                              <q-tooltip class="text-grey-10 shadow-4 q-pa-sm" style="
+                                  background-color: #fffde7;
+                                  border: 1px solid #bdbdbd;
+                                  font-size: 12px;
+                                  max-width: 220px;
+                                  max-height: 250px;
+                                  overflow-y: auto;
+                                ">
+                                <div class="text-weight-bold q-mb-sm text-uppercase" style="
+                                    border-bottom: 1px solid #e0e0e0;
+                                    padding-bottom: 4px;
+                                  ">
+                                  Días Programados
+                                </div>
+                                <div class="text-caption" style="line-height: 1.6">
+                                  <div v-for="(day, idx) in row.act
+                                    .scheduleDetails.assignedDays" :key="idx">
+                                    • {{ day }}
+                                  </div>
+                                </div>
+                              </q-tooltip>
+                            </div>
+                            <div v-else class="text-grey-5 text-caption italic">
+                              Sin programar
+                            </div>
+                          </td>
+
+                          <!-- INSTRUCTOR SUGERIDO -->
+                          <td>
+                            <div v-if="
+                              (row.act.suggestedInstructor &&
+                                row.act.suggestedInstructor.name) ||
+                              (row.act.instructors && row.act.instructors.name)
+                            ">
+                              <div class="text-weight-bold text-grey-9 text-caption">
+                                {{
+                                  row.act.suggestedInstructor?.name ||
+                                  row.act.instructors?.name
+                                }}
+                              </div>
+                              <div class="text-caption text-grey-6 text-uppercase" style="font-size: 10px">
+                                {{
+                                  row.act.suggestedInstructor?.type ||
+                                  row.act.instructors?.type ||
+                                  "Sugerido"
+                                }}
+                              </div>
+                            </div>
+                            <div v-else class="text-red-8 text-weight-bold text-caption">
+                              ❌ SIN ASIGNAR
+                            </div>
+                          </td>
+
+                          <!-- ESTADO -->
+                          <td class="text-center">
+                            <q-chip :color="getStatusColor(getActivityStatus(row.act))
+                              " text-color="white" dense square class="text-weight-bold text-caption text-uppercase"
+                              style="font-size: 11px; padding: 4px 8px">
+                              <q-icon :name="getStatusIcon(getActivityStatus(row.act))
+                                " class="q-mr-xs" />
+                              {{ getStatusLabel(getActivityStatus(row.act)) }}
+                            </q-chip>
+                          </td>
+
+                          <!-- ACCIONES -->
+                          <td class="text-center">
+                            <div class="row justify-center items-center no-wrap q-gutter-xs">
+                              <!-- Confirmar Instructor -->
+                              <q-btn flat round dense color="green-9" icon="check" size="sm" :disable="(row.act.suggestedInstructor?.assignmentStatus ||
+                                row.act.instructors?.assignmentStatus) === 'confirmed' ||
+                                !(row.act.suggestedInstructor?.name || row.act.instructors?.name)
+                                " @click="
+                                  confirmInstructor(row.phase, row.comp, row.rap, row.act)
+                                  ">
+                                <q-tooltip class="bg-green-9 text-weight-bold">
                                   {{
-                                    {
-                                      ANALYSIS: "Análisis",
-                                      PLANNING: "Planeación",
-                                      EXECUTION: "Ejecución",
-                                      EVALUATION: "Evaluación",
-                                      INDUCCION: "Inducción",
-                                      ETAPA_PRODUCTIVA: "Etapa Productiva",
-                                    }[phase.phase] || phase.phase
+                                    (row.act.suggestedInstructor?.assignmentStatus ||
+                                      row.act.instructors?.assignmentStatus) === 'confirmed'
+                                      ? "Ya está confirmado"
+                                      : "Confirmar Instructor"
                                   }}
-                                </td>
+                                </q-tooltip>
+                              </q-btn>
 
-                                <!-- COMPETENCIA -->
-                                <td class="text-caption">
-                                  <div
-                                    class="text-weight-bold text-green-10"
-                                    style="line-height: 1.2"
-                                  >
-                                    {{ comp.code }}
-                                  </div>
-                                  <div
-                                    class="text-grey-7 ellipsis-2-lines"
-                                    style="font-size: 11px; line-height: 1.1"
-                                  >
-                                    {{ comp.name }}
-                                  </div>
-                                </td>
+                              <!-- Programar en Calendario -->
+                              <q-btn flat round dense color="green-9" icon="calendar_month" size="sm" :disable="row.act.scheduleDetails?.isPublished ||
+                                !row.act.scheduleDetails?.assignedDays?.length ||
+                                (row.act.suggestedInstructor?.assignmentStatus ||
+                                  row.act.instructors?.assignmentStatus) !== 'confirmed'
+                                " @click="
+                                  scheduleOutcomeToCalendar(
+                                    row.phase,
+                                    row.comp,
+                                    row.rap,
+                                    row.act,
+                                    row.phIdx,
+                                    row.coIdx,
+                                    row.rapIdx,
+                                    row.acIdx,
+                                  )
+                                  ">
+                                <q-tooltip class="bg-green-9 text-weight-bold">
+                                  {{
+                                    row.act.scheduleDetails?.isPublished
+                                      ? "Ya programado en el Calendario de Horarios"
+                                      : row.act.scheduleDetails?.assignedDays?.length
+                                        ? (row.act.suggestedInstructor?.assignmentStatus ||
+                                          row.act.instructors?.assignmentStatus) === 'confirmed'
+                                          ? "Registrar en el Calendario de Horarios"
+                                          : "Se habilita con instructor CONFIRMADO"
+                                        : "Sin fechas asignadas por el instructor"
+                                  }}
+                                </q-tooltip>
+                              </q-btn>
 
-                                <!-- RAP & ACTIVITY -->
-                                <td>
-                                  <div
-                                    class="text-weight-bolder text-grey-9 text-caption q-mb-xs"
-                                    style="line-height: 1.2"
-                                  >
-                                    RAP: {{ rap.description }}
-                                  </div>
-                                  <div
-                                    class="text-grey-7 bg-grey-1 q-pa-xs rounded-borders text-caption"
-                                    style="
-                                      font-size: 12px;
-                                      line-height: 1.2;
-                                      border: 1px solid #f0f0f0;
-                                    "
-                                  >
-                                    <strong>Actividad:</strong>
-                                    {{
-                                      act.description ||
-                                      act.observations ||
-                                      "Sin descripción"
-                                    }}
-                                  </div>
-                                </td>
-
-                                <!-- HORAS -->
-                                <td class="text-center">
-                                  <q-badge
-                                    outline
-                                    color="green-9"
-                                    class="text-weight-bold text-caption"
-                                  >
-                                    {{ getDisplayHours(act) }}h directas
-                                  </q-badge>
-                                </td>
-
-                                <!-- DÍAS ASIGNADOS -->
-                                <td>
-                                  <div
-                                    v-if="
-                                      act.scheduleDetails &&
-                                      act.scheduleDetails.assignedDays &&
-                                      act.scheduleDetails.assignedDays.length >
-                                        0
-                                    "
-                                    class="cursor-pointer"
-                                  >
-                                    <div
-                                      class="text-weight-bold text-caption text-grey-8"
-                                    >
-                                      {{
-                                        act.scheduleDetails.assignedDays.length
-                                      }}
-                                      sesiones
-                                    </div>
-                                    <div
-                                      class="text-grey-6 text-caption ellipsis-2-lines"
-                                      style="font-size: 10px; line-height: 1"
-                                    >
-                                      {{
-                                        formatDaysList(
-                                          act.scheduleDetails.assignedDays,
-                                        )
-                                      }}
-                                    </div>
-                                    <q-tooltip
-                                      class="text-grey-10 shadow-4 q-pa-sm"
-                                      style="
-                                        background-color: #fffde7;
-                                        border: 1px solid #bdbdbd;
-                                        font-size: 12px;
-                                        max-width: 220px;
-                                        max-height: 250px;
-                                        overflow-y: auto;
-                                      "
-                                    >
-                                      <div
-                                        class="text-weight-bold q-mb-sm text-uppercase"
-                                        style="
-                                          border-bottom: 1px solid #e0e0e0;
-                                          padding-bottom: 4px;
-                                        "
-                                      >
-                                        Días Programados
-                                      </div>
-                                      <div
-                                        class="text-caption"
-                                        style="line-height: 1.6"
-                                      >
-                                        <div
-                                          v-for="(day, idx) in act
-                                            .scheduleDetails.assignedDays"
-                                          :key="idx"
-                                        >
-                                          • {{ day }}
-                                        </div>
-                                      </div>
-                                    </q-tooltip>
-                                  </div>
-                                  <div
-                                    v-else
-                                    class="text-grey-5 text-caption italic"
-                                  >
-                                    Sin programar
-                                  </div>
-                                </td>
-
-                                <!-- INSTRUCTOR SUGERIDO -->
-                                <td>
-                                  <div
-                                    v-if="
-                                      (act.suggestedInstructor &&
-                                        act.suggestedInstructor.name) ||
-                                      (act.instructors && act.instructors.name)
-                                    "
-                                  >
-                                    <div
-                                      class="text-weight-bold text-grey-9 text-caption"
-                                    >
-                                      {{
-                                        act.suggestedInstructor?.name ||
-                                        act.instructors?.name
-                                      }}
-                                    </div>
-                                    <div
-                                      class="text-caption text-grey-6 text-uppercase"
-                                      style="font-size: 10px"
-                                    >
-                                      {{
-                                        act.suggestedInstructor?.type ||
-                                        act.instructors?.type ||
-                                        "Sugerido"
-                                      }}
-                                    </div>
-                                  </div>
-                                  <div
-                                    v-else
-                                    class="text-red-8 text-weight-bold text-caption"
-                                  >
-                                    ❌ SIN ASIGNAR
-                                  </div>
-                                </td>
-
-                                <!-- ESTADO -->
-                                <td class="text-center">
-                                  <q-chip
-                                    :color="
-                                      getStatusColor(getActivityStatus(act))
-                                    "
-                                    text-color="white"
-                                    dense
-                                    square
-                                    class="text-weight-bold text-caption text-uppercase"
-                                    style="font-size: 11px; padding: 4px 8px"
-                                  >
-                                    <q-icon
-                                      :name="
-                                        getStatusIcon(getActivityStatus(act))
-                                      "
-                                      class="q-mr-xs"
-                                    />
-                                    {{ getStatusLabel(getActivityStatus(act)) }}
-                                  </q-chip>
-                                </td>
-
-                                <!-- ACCIONES -->
-                                <td class="text-center">
-                                  <div
-                                    class="row justify-center items-center no-wrap q-gutter-xs"
-                                  >
-                                    <!-- Confirmar Instructor -->
-                                    <q-btn
-                                      flat
-                                      round
-                                      dense
-                                      color="green-9"
-                                      icon="check"
-                                      size="sm"
-                                      :disable="
-                                        (act.suggestedInstructor?.assignmentStatus ||
-                                          act.instructors?.assignmentStatus) === 'confirmed' ||
-                                        !(act.suggestedInstructor?.name || act.instructors?.name)
-                                      "
-                                      @click="
-                                        confirmInstructor(phase, comp, rap, act)
-                                      "
-                                    >
-                                      <q-tooltip
-                                        class="bg-green-9 text-weight-bold"
-                                      >
-                                        {{
-                                          (act.suggestedInstructor?.assignmentStatus ||
-                                            act.instructors?.assignmentStatus) === 'confirmed'
-                                            ? "Ya está confirmado"
-                                            : "Confirmar Instructor"
-                                        }}
-                                      </q-tooltip>
-                                    </q-btn>
-
-                                    <!-- Programar en Calendario -->
-                                    <q-btn
-                                      flat
-                                      round
-                                      dense
-                                      color="green-9"
-                                      icon="calendar_month"
-                                      size="sm"
-                                      :disable="
-                                        act.scheduleDetails?.isPublished ||
-                                        !act.scheduleDetails?.assignedDays?.length ||
-                                        (act.suggestedInstructor?.assignmentStatus ||
-                                          act.instructors?.assignmentStatus) !== 'confirmed'
-                                      "
-                                      @click="
-                                        scheduleOutcomeToCalendar(
-                                          phase,
-                                          comp,
-                                          rap,
-                                          act,
-                                          phIdx,
-                                          coIdx,
-                                          rapIdx,
-                                          acIdx,
-                                        )
-                                      "
-                                    >
+                              <!-- Opciones secundarias -->
+                              <q-btn flat round dense color="green-9" icon="more_vert" size="sm">
+                                <q-tooltip class="bg-green-9">Opciones</q-tooltip>
+                                <q-menu anchor="center right" self="center left" auto-close square no-focus no-refocus
+                                  class="opciones-menu">
+                                  <div class="row items-center no-wrap q-pa-xs q-gutter-x-xs">
+                                    <!-- Editar Días Asignados -->
+                                    <div class="relative-position">
+                                      <q-btn flat round dense color="green-9" icon="edit_calendar" size="sm"
+                                        :disable="row.act.scheduleDetails?.isPublished"
+                                        @click="openEditDaysModal(row.phase, row.comp, row.rap, row.act)" />
                                       <q-tooltip class="bg-green-9 text-weight-bold">
                                         {{
-                                          act.scheduleDetails?.isPublished
-                                            ? "Ya programado en el Calendario de Horarios"
-                                            : act.scheduleDetails?.assignedDays?.length
-                                              ? (act.suggestedInstructor?.assignmentStatus ||
-                                                  act.instructors?.assignmentStatus) === 'confirmed'
-                                                ? "Registrar en el Calendario de Horarios"
-                                                : "Se habilita con instructor CONFIRMADO"
-                                              : "Sin fechas asignadas por el instructor"
+                                          row.act.scheduleDetails?.isPublished
+                                            ? "Ya programado (no editable)"
+                                            : "Editar Días Asignados"
                                         }}
                                       </q-tooltip>
-                                    </q-btn>
+                                    </div>
 
-                                    <!-- Opciones secundarias -->
-                                    <q-btn
-                                      flat
-                                      round
-                                      dense
-                                      color="green-9"
-                                      icon="more_vert"
-                                      size="sm"
-                                    >
-                                      <q-tooltip class="bg-green-9"
-                                        >Opciones</q-tooltip
-                                      >
-                                      <q-menu
-                                        anchor="center right"
-                                        self="center left"
-                                        auto-close
-                                        square
-                                        no-focus
-                                        no-refocus
-                                        class="opciones-menu"
-                                      >
-                                        <div
-                                          class="row items-center no-wrap q-pa-xs q-gutter-x-xs"
-                                        >
-                                          <!-- Editar Días Asignados -->
-                                          <div class="relative-position">
-                                            <q-btn
-                                              flat
-                                              round
-                                              dense
-                                              color="green-9"
-                                              icon="edit_calendar"
-                                              size="sm"
-                                              :disable="act.scheduleDetails?.isPublished"
-                                              @click="openEditDaysModal(phase, comp, rap, act)"
-                                            />
-                                            <q-tooltip class="bg-green-9 text-weight-bold">
-                                              {{
-                                                act.scheduleDetails?.isPublished
-                                                  ? "Ya programado (no editable)"
-                                                  : "Editar Días Asignados"
-                                              }}
-                                            </q-tooltip>
-                                          </div>
+                                    <!-- Reasignar/Cambiar Instructor -->
+                                    <div class="relative-position">
+                                      <q-btn flat round dense color="green-9" icon="person_add" size="sm"
+                                        @click="openReassignModal(row.phase, row.comp, row.rap, row.act)" />
+                                      <q-tooltip class="bg-green-9 text-weight-bold">
+                                        Reasignar/Cambiar Instructor
+                                      </q-tooltip>
+                                    </div>
 
-                                          <!-- Reasignar/Cambiar Instructor -->
-                                          <div class="relative-position">
-                                            <q-btn
-                                              flat
-                                              round
-                                              dense
-                                              color="green-9"
-                                              icon="person_add"
-                                              size="sm"
-                                              @click="openReassignModal(phase, comp, rap, act)"
-                                            />
-                                            <q-tooltip class="bg-green-9 text-weight-bold">
-                                              Reasignar/Cambiar Instructor
-                                            </q-tooltip>
-                                          </div>
-
-                                          <!-- Reject button -->
-                                          <div class="relative-position">
-                                            <q-btn
-                                              flat
-                                              round
-                                              dense
-                                              color="green-9"
-                                              icon="close"
-                                              size="sm"
-                                              :disable="
-                                                (act.suggestedInstructor
-                                                  ?.assignmentStatus ||
-                                                  act.instructors
-                                                    ?.assignmentStatus) ===
-                                                  'rejected' ||
-                                                !(
-                                                  act.suggestedInstructor
-                                                    ?.name ||
-                                                  act.instructors?.name
-                                                )
-                                              "
-                                              @click="
-                                                rejectInstructor(
-                                                  phase,
-                                                  comp,
-                                                  rap,
-                                                  act,
-                                                )
-                                              "
-                                            />
-                                            <q-tooltip
-                                              class="bg-green-9 text-weight-bold"
-                                            >
-                                              {{
-                                                (act.suggestedInstructor
-                                                  ?.assignmentStatus ||
-                                                  act.instructors
-                                                    ?.assignmentStatus) ===
-                                                "rejected"
-                                                  ? "Ya está rechazado"
-                                                  : "Rechazar Instructor"
-                                              }}
-                                            </q-tooltip>
-                                          </div>
-                                        </div>
-                                      </q-menu>
-                                    </q-btn>
+                                    <!-- Reject button -->
+                                    <div class="relative-position">
+                                      <q-btn flat round dense color="green-9" icon="close" size="sm" :disable="(row.act.suggestedInstructor
+                                        ?.assignmentStatus ||
+                                        row.act.instructors
+                                          ?.assignmentStatus) ===
+                                        'rejected' ||
+                                        !(
+                                          row.act.suggestedInstructor
+                                            ?.name ||
+                                          row.act.instructors?.name
+                                        )
+                                        " @click="
+                                          rejectInstructor(
+                                            row.phase,
+                                            row.comp,
+                                            row.rap,
+                                            row.act,
+                                          )
+                                          " />
+                                      <q-tooltip class="bg-green-9 text-weight-bold">
+                                        {{
+                                          (row.act.suggestedInstructor
+                                            ?.assignmentStatus ||
+                                            row.act.instructors
+                                              ?.assignmentStatus) ===
+                                            "rejected"
+                                            ? "Ya está rechazado"
+                                            : "Rechazar Instructor"
+                                        }}
+                                      </q-tooltip>
+                                    </div>
                                   </div>
-                                </td>
-                              </tr>
-                            </template>
-                          </template>
-                        </template>
+                                </q-menu>
+                              </q-btn>
+                            </div>
+                          </td>
+                        </tr>
+
+                        <tr v-if="filteredRows.length === 0">
+                          <td colspan="8" class="text-center text-grey-6 q-pa-lg">
+                            No se encontraron actividades con los filtros
+                            seleccionados.
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </q-card-section>
@@ -912,13 +760,7 @@
     <q-dialog v-model="showReassignModal" persistent>
       <q-card flat bordered class="scheduler-modal">
         <q-card-section class="bg-green-10 text-white q-py-md row items-center">
-          <q-avatar
-            color="white"
-            text-color="green-10"
-            icon="person_add"
-            size="40px"
-            class="q-mr-md"
-          />
+          <q-avatar color="white" text-color="green-10" icon="person_add" size="40px" class="q-mr-md" />
           <div>
             <div class="text-h6 text-weight-bolder">REASIGNAR INSTRUCTOR</div>
             <div class="text-caption text-green-2">
@@ -938,24 +780,12 @@
           </div>
 
           <!-- Select Instructor -->
-          <q-select
-            filled
-            v-model="reassignInstructor"
-            use-input
-            :options="filteredInstructors"
-            option-label="name"
-            @filter="filterFn"
-            label="Seleccione un Instructor..."
-            class="q-mb-md"
-            emit-value
-            map-options
-            @update:model-value="checkInstructorConflicts"
-          >
+          <q-select filled v-model="reassignInstructor" use-input :options="filteredInstructors" option-label="name"
+            @filter="filterFn" label="Seleccione un Instructor..." class="q-mb-md" emit-value map-options
+            @update:model-value="checkInstructorConflicts">
             <template v-slot:no-option>
               <q-item>
-                <q-item-section class="text-grey"
-                  >No se encontraron instructores activos</q-item-section
-                >
+                <q-item-section class="text-grey">No se encontraron instructores activos</q-item-section>
               </q-item>
             </template>
           </q-select>
@@ -968,21 +798,12 @@
             </div>
           </div>
 
-          <div
-            v-else-if="conflictResult"
-            class="q-pa-md rounded-borders border-all"
-            :class="
-              conflictResult.hasConflict
-                ? 'bg-red-1 text-red-9 border-red'
-                : 'bg-green-1 text-green-10 border-green'
-            "
-          >
+          <div v-else-if="conflictResult" class="q-pa-md rounded-borders border-all" :class="conflictResult.hasConflict
+            ? 'bg-red-1 text-red-9 border-red'
+            : 'bg-green-1 text-green-10 border-green'
+            ">
             <div class="flex items-center text-weight-bold">
-              <q-icon
-                :name="conflictResult.hasConflict ? 'warning' : 'check_circle'"
-                class="q-mr-xs"
-                size="20px"
-              />
+              <q-icon :name="conflictResult.hasConflict ? 'warning' : 'check_circle'" class="q-mr-xs" size="20px" />
               {{
                 conflictResult.hasConflict
                   ? "¡Cruce de horario detectado!"
@@ -997,15 +818,10 @@
                 <li v-for="(conf, idx) in conflictResult.conflicts" :key="idx">
                   <strong>Ficha {{ conf.fiche }}:</strong> {{ conf.activity }} —
                   <br />
-                  <span class="text-red-7"
-                    >Días de cruce: {{ conf.conflictingDays.join(", ") }}</span
-                  >
+                  <span class="text-red-7">Días de cruce: {{ conf.conflictingDays.join(", ") }}</span>
                 </li>
               </ul>
-              <div
-                class="text-weight-bold text-red-10 q-mt-xs"
-                style="font-size: 11px"
-              >
+              <div class="text-weight-bold text-red-10 q-mt-xs" style="font-size: 11px">
                 ⚠️ Nota: Puede proceder con la reasignación si desea forzar el
                 cruce bajo su supervisión.
               </div>
@@ -1019,12 +835,8 @@
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
           <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
-          <q-btn
-            class="bg-green-10 text-white text-weight-bolder"
-            label="Confirmar Asignación"
-            :disabled="!reassignInstructor"
-            @click="applyReassignment"
-          />
+          <q-btn class="bg-green-10 text-white text-weight-bolder" label="Confirmar Asignación"
+            :disabled="!reassignInstructor" @click="applyReassignment" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1033,13 +845,7 @@
     <q-dialog v-model="showEditDaysModal" persistent>
       <q-card flat bordered class="scheduler-modal scheduler-modal-wide">
         <q-card-section class="bg-green-10 text-white q-py-md row items-center">
-          <q-avatar
-            color="white"
-            text-color="green-10"
-            icon="edit_calendar"
-            size="40px"
-            class="q-mr-md"
-          />
+          <q-avatar color="white" text-color="green-10" icon="edit_calendar" size="40px" class="q-mr-md" />
           <div>
             <div class="text-h6 text-weight-bolder">EDITAR DÍAS ASIGNADOS</div>
             <div class="text-caption text-green-2">
@@ -1068,44 +874,20 @@
           </div>
 
           <div class="edit-days-calendar-wrapper">
-            <q-date
-              v-model="editDaysSelected"
-              multiple
-              today-btn
-              color="green-10"
-              class="edit-days-calendar"
-              :min="editDaysMinDate"
-              :max="editDaysMaxDate"
-            />
+            <q-date v-model="editDaysSelected" multiple today-btn color="green-10" class="edit-days-calendar"
+              :min="editDaysMinDate" :max="editDaysMaxDate" />
           </div>
 
           <div class="q-mt-md row items-center justify-between">
-            <q-badge
-              color="white"
-              class="text-weight-bold text-black"
-              style="font-size: 12px; padding: 4px 10px"
-            >
+            <q-badge color="white" class="text-weight-bold text-black" style="font-size: 12px; padding: 4px 10px">
               {{ editDaysSelected.length }} día(s) seleccionado(s)
             </q-badge>
-            <q-btn
-              flat
-              dense
-              color="gray"
-              label="Limpiar"
-              icon="delete_sweep"
-              @click="editDaysSelected = []"
-            />
+            <q-btn flat dense color="gray" label="Limpiar" icon="delete_sweep" @click="editDaysSelected = []" />
           </div>
 
-          <div
-            v-if="editDaysSelected.length > 0"
-            class="edit-days-selected-list q-mt-sm"
-          >
-            <span
-              v-for="day in [...editDaysSelected].sort()"
-              :key="day"
-              class="edit-days-selected-item bg-green-10 text-white"
-            >
+          <div v-if="editDaysSelected.length > 0" class="edit-days-selected-list q-mt-sm">
+            <span v-for="day in [...editDaysSelected].sort()" :key="day"
+              class="edit-days-selected-item bg-green-10 text-white">
               {{ day }}
             </span>
           </div>
@@ -1113,27 +895,17 @@
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
           <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
-          <q-btn
-            class="bg-green-10 text-white text-weight-bolder"
-            label="Guardar Días"
-            icon="save"
-            @click="saveEditedDays"
-          />
+          <q-btn class="bg-green-10 text-white text-weight-bolder" label="Guardar Días" icon="save"
+            @click="saveEditedDays" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- ── Modal: Programar Resultado en el Calendario Oficial ── -->
     <q-dialog v-model="showScheduleOutcomeModal" persistent>
-      <q-card
-        flat
-        bordered
-        style="width: 640px; max-width: 94vw; border-radius: 10px"
-      >
+      <q-card flat bordered style="width: 640px; max-width: 94vw; border-radius: 10px">
         <!-- Header -->
-        <q-card-section
-          class="bg-green-10 text-white row items-center q-py-md border-bottom"
-        >
+        <q-card-section class="bg-green-10 text-white row items-center q-py-md border-bottom">
           <div>
             <div class="text-subtitle2 text-weight-bolder text-uppercase">
               Calendario Oficial de Horarios
@@ -1152,21 +924,10 @@
 
         <q-card-section class="q-pa-md">
           <!-- Info -->
-          <div
-            class="bg-cyan-1 q-pa-md q-mb-md"
-            style="border: 1px solid #c8e6c9"
-          >
+          <div class="bg-cyan-1 q-pa-md q-mb-md" style="border: 1px solid #c8e6c9">
             <div class="row items-start no-wrap q-gutter-x-sm">
-              <q-icon
-                name="info"
-                color="green-9"
-                size="20px"
-                class="q-mt-xs col-auto"
-              />
-              <div
-                class="text-caption text-green-10 col"
-                style="line-height: 1.5"
-              >
+              <q-icon name="info" color="green-9" size="20px" class="q-mt-xs col-auto" />
+              <div class="text-caption text-green-10 col" style="line-height: 1.5">
                 Se registrará este Resultado de Aprendizaje en el Calendario
                 oficial de Horarios de la ficha. Tenga en cuenta que esta acción
                 es definitiva.
@@ -1230,13 +991,8 @@
                 Sesiones
               </div>
               <div class="col-9 text-grey-9">
-                <q-badge
-                  square
-                  color="green-9"
-                  text-color="white"
-                  class="text-weight-bolder q-mr-sm"
-                  style="font-size: 11px; padding: 3px 8px"
-                >
+                <q-badge square color="green-9" text-color="white" class="text-weight-bolder q-mr-sm"
+                  style="font-size: 11px; padding: 3px 8px">
                   {{
                     scheduleOutcomeContext?.act?.scheduleDetails?.assignedDays
                       ?.length || 0
@@ -1255,46 +1011,21 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            v-close-popup
-            class="text-weight-medium"
-            :disable="scheduleOutcomeLoading"
-          />
-          <q-btn
-            class="bg-green-9 text-white text-weight-bolder q-px-lg"
-            :label="scheduleOutcomeLoading ? 'Programando...' : 'Sí, Programar'"
-            icon="calendar_month"
-            unelevated
-            :disable="scheduleOutcomeLoading"
-            @click="confirmScheduleOutcome"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="text-weight-medium"
+            :disable="scheduleOutcomeLoading" />
+          <q-btn class="bg-green-9 text-white text-weight-bolder q-px-lg"
+            :label="scheduleOutcomeLoading ? 'Programando...' : 'Sí, Programar'" icon="calendar_month" unelevated
+            :disable="scheduleOutcomeLoading" @click="confirmScheduleOutcome" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- ── Modal: Distribución de Horas por Trimestre ── -->
     <q-dialog v-model="showTrimestreModal" persistent>
-      <q-card
-        square
-        flat
-        bordered
-        style="width: 680px; max-width: 94vw; border-radius: 0"
-      >
+      <q-card square flat bordered style="width: 680px; max-width: 94vw; border-radius: 0">
         <!-- Header -->
-        <q-card-section
-          class="bg-green-10 text-white row items-center q-py-md border-bottom"
-        >
-          <q-avatar
-            square
-            color="white"
-            text-color="green-10"
-            icon="calendar_month"
-            size="44px"
-            class="q-mr-md"
-          />
+        <q-card-section class="bg-green-10 text-white row items-center q-py-md border-bottom">
+          <q-avatar square color="white" text-color="green-10" icon="calendar_month" size="44px" class="q-mr-md" />
           <div>
             <div class="text-subtitle2 text-weight-bolder text-uppercase">
               Programación Final de la Ficha
@@ -1313,10 +1044,7 @@
 
         <q-card-section class="q-pa-md">
           <!-- Info -->
-          <div
-            class="bg-green-1 q-pa-md q-mb-md row items-start q-gutter-x-sm"
-            style="border: 1px solid #c8e6c9"
-          >
+          <div class="bg-green-1 q-pa-md q-mb-md row items-start q-gutter-x-sm" style="border: 1px solid #c8e6c9">
             <q-icon name="info" color="green-9" size="20px" />
             <div class="text-caption text-green-10" style="line-height: 1.5">
               Distribución de horas directas programadas en el calendario por
@@ -1337,13 +1065,8 @@
             <tbody>
               <tr v-for="t in horasPorTrimestre" :key="t.trimestre">
                 <td>
-                  <q-badge
-                    square
-                    color="green-9"
-                    text-color="white"
-                    class="text-weight-bolder"
-                    style="font-size: 12px; padding: 4px 10px"
-                  >
+                  <q-badge square color="green-9" text-color="white" class="text-weight-bolder"
+                    style="font-size: 12px; padding: 4px 10px">
                     TRIMESTRE {{ t.trimestre }}
                   </q-badge>
                 </td>
@@ -1354,26 +1077,13 @@
                 </td>
                 <td>
                   <div class="row items-center q-gutter-x-sm">
-                    <q-linear-progress
-                      :value="
-                        maxTrimestreHoras > 0 ? t.horas / maxTrimestreHoras : 0
-                      "
-                      color="green-9"
-                      track-color="green-2"
-                      class="col"
-                      style="height: 8px"
-                    />
-                    <q-badge
-                      square
-                      color="green-8"
-                      text-color="white"
-                      class="text-weight-bolder"
-                      style="
+                    <q-linear-progress :value="maxTrimestreHoras > 0 ? t.horas / maxTrimestreHoras : 0
+                      " color="green-9" track-color="green-2" class="col" style="height: 8px" />
+                    <q-badge square color="green-8" text-color="white" class="text-weight-bolder" style="
                         font-size: 12px;
                         padding: 4px 10px;
                         min-width: 52px;
-                      "
-                    >
+                      ">
                       {{ t.horas }}h
                     </q-badge>
                   </div>
@@ -1388,13 +1098,8 @@
                 <td>
                   <div class="row items-center justify-end q-gutter-x-sm">
                     <q-icon name="check_circle" color="green-9" size="20px" />
-                    <q-badge
-                      square
-                      color="green-10"
-                      text-color="white"
-                      class="text-weight-bolder"
-                      style="font-size: 14px; padding: 6px 14px"
-                    >
+                    <q-badge square color="green-10" text-color="white" class="text-weight-bolder"
+                      style="font-size: 14px; padding: 6px 14px">
                       {{ totalHorasPlaneadas }}h
                     </q-badge>
                   </div>
@@ -1404,17 +1109,11 @@
           </table>
 
           <!-- Advertencia si hay distribución muy desigual -->
-          <q-banner
-            v-if="
-              horasPorTrimestre.length > 1 &&
-              Math.max(...horasPorTrimestre.map((t) => t.horas)) >
-                Math.min(...horasPorTrimestre.map((t) => t.horas)) * 2
-            "
-            class="bg-orange-1 text-orange-9 q-mt-md"
-            dense
-            square
-            style="border: 1px solid #ffe082"
-          >
+          <q-banner v-if="
+            horasPorTrimestre.length > 1 &&
+            Math.max(...horasPorTrimestre.map((t) => t.horas)) >
+            Math.min(...horasPorTrimestre.map((t) => t.horas)) * 2
+          " class="bg-orange-1 text-orange-9 q-mt-md" dense square style="border: 1px solid #ffe082">
             <template v-slot:avatar>
               <q-icon name="warning" color="orange-8" />
             </template>
@@ -1424,20 +1123,9 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
-          <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            v-close-popup
-            class="text-weight-medium"
-          />
-          <q-btn
-            class="bg-green-9 text-white text-weight-bolder q-px-lg"
-            label="Confirmar y Guardar Programación"
-            icon="check_circle"
-            unelevated
-            @click="confirmarProgramacionFinal"
-          />
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="text-weight-medium" />
+          <q-btn class="bg-green-9 text-white text-weight-bolder q-px-lg" label="Confirmar y Guardar Programación"
+            icon="check_circle" unelevated @click="confirmarProgramacionFinal" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1445,7 +1133,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
 import { useRoute, useRouter } from "vue-router";
 import { PlanningService } from "../services/planning.service";
@@ -1476,6 +1164,10 @@ const programaFilter = ref(null); // null = todos los programas
 const loadingPlannings = ref(false);
 const selectedPlanning = ref(null);
 const loadingSelectedPlanning = ref(false);
+
+// ── Paginación ──
+const currentPage = ref(1);
+const itemsPerPage = ref(12);
 
 // Simulación de alertas de envío al instructor
 const simulatedNotification = ref(null);
@@ -1663,6 +1355,39 @@ const completasCount = computed(
     ).length,
 );
 
+// ── Paginación ──
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredPlannings.value.length / itemsPerPage.value)),
+);
+
+const paginatedPlannings = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredPlannings.value.slice(start, start + itemsPerPage.value);
+});
+
+const rangeStart = computed(() =>
+  filteredPlannings.value.length === 0
+    ? 0
+    : (currentPage.value - 1) * itemsPerPage.value + 1,
+);
+
+const rangeEnd = computed(() =>
+  Math.min(
+    currentPage.value * itemsPerPage.value,
+    filteredPlannings.value.length,
+  ),
+);
+
+// Al cambiar filtros o el tamaño de página, volver a la primera página
+watch([searchFiche, estadoFilter, programaFilter, itemsPerPage], () => {
+  currentPage.value = 1;
+});
+
+// Si al filtrar la página actual queda fuera de rango, ajustarla
+watch(totalPages, (max) => {
+  if (currentPage.value > max) currentPage.value = max;
+});
+
 const selectPlanning = async (plan) => {
   selectedPlanning.value = plan; // Show instant metadata preview
   simulatedNotification.value = null;
@@ -1822,6 +1547,141 @@ const getStatusLabel = (status) => {
   if (status === "rejected") return "Rechazado";
   return "Pendiente";
 };
+
+// ── Filtros de la tabla de actividades (ficha seleccionada) ──
+const tableSearch = ref("");
+const tableFaseFilter = ref(null);
+const tableCompFilter = ref(null);
+const tableInstructorFilter = ref(null);
+const tableEstadoFilter = ref(null);
+
+const estadoOptions = [
+  { value: "pending", label: "Pendiente", color: "orange-8" },
+  { value: "confirmed", label: "Confirmado", color: "green-9" },
+  { value: "rejected", label: "Rechazado", color: "red-8" },
+  { value: "programmed", label: "Programado", color: "teal-9" },
+];
+
+// Aplana fase → competencia → RAP → actividad en filas simples,
+// conservando los índices originales para las acciones (confirmar,
+// reasignar, programar, etc.)
+const allRows = computed(() => {
+  const rows = [];
+  const content = selectedPlanning.value?.pedagogicalPlanning?.content || [];
+  content.forEach((phase, phIdx) => {
+    (phase.competencies || []).forEach((comp, coIdx) => {
+      (comp.learningOutcomes || []).forEach((rap, rapIdx) => {
+        (rap.pedagogicalActivities || []).forEach((act, acIdx) => {
+          rows.push({ phase, comp, rap, act, phIdx, coIdx, rapIdx, acIdx });
+        });
+      });
+    });
+  });
+  return rows;
+});
+
+const faseOptions = computed(() => {
+  const seen = new Map();
+  allRows.value.forEach((r) => {
+    if (!seen.has(r.phase.phase)) {
+      seen.set(r.phase.phase, getPhaseLabel(r.phase.phase));
+    }
+  });
+  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+});
+
+const compOptions = computed(() => {
+  const seen = new Map();
+  allRows.value.forEach((r) => {
+    if (!seen.has(r.comp.code)) {
+      seen.set(r.comp.code, `${r.comp.code} — ${r.comp.name}`);
+    }
+  });
+  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+});
+
+const instructorOptions = computed(() => {
+  const seen = new Set();
+  const options = [{ value: "__unassigned__", label: "Sin asignar" }];
+  allRows.value.forEach((r) => {
+    const name = r.act.suggestedInstructor?.name || r.act.instructors?.name;
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      options.push({ value: name, label: name });
+    }
+  });
+  return options;
+});
+
+const rowMatchesEstado = (row, estado) => {
+  const status = getActivityStatus(row.act);
+  if (estado === "pending") {
+    return !status || !["confirmed", "rejected", "programmed"].includes(status);
+  }
+  return status === estado;
+};
+
+const filteredRows = computed(() => {
+  const needle = tableSearch.value.trim().toLowerCase();
+
+  return allRows.value.filter((row) => {
+    const { comp, rap, act } = row;
+
+    const matchesSearch =
+      !needle ||
+      (rap.description || "").toLowerCase().includes(needle) ||
+      (act.description || act.observations || "")
+        .toLowerCase()
+        .includes(needle) ||
+      (comp.code || "").toLowerCase().includes(needle) ||
+      (comp.name || "").toLowerCase().includes(needle);
+
+    const matchesFase =
+      !tableFaseFilter.value || row.phase.phase === tableFaseFilter.value;
+
+    const matchesComp = !tableCompFilter.value || comp.code === tableCompFilter.value;
+
+    const instructorName = act.suggestedInstructor?.name || act.instructors?.name;
+    const matchesInstructor =
+      !tableInstructorFilter.value ||
+      (tableInstructorFilter.value === "__unassigned__"
+        ? !instructorName
+        : instructorName === tableInstructorFilter.value);
+
+    const matchesEstado =
+      !tableEstadoFilter.value || rowMatchesEstado(row, tableEstadoFilter.value);
+
+    return (
+      matchesSearch &&
+      matchesFase &&
+      matchesComp &&
+      matchesInstructor &&
+      matchesEstado
+    );
+  });
+});
+
+const hasActiveTableFilters = computed(
+  () =>
+    !!tableSearch.value ||
+    !!tableFaseFilter.value ||
+    !!tableCompFilter.value ||
+    !!tableInstructorFilter.value ||
+    !!tableEstadoFilter.value,
+);
+
+const clearTableFilters = () => {
+  tableSearch.value = "";
+  tableFaseFilter.value = null;
+  tableCompFilter.value = null;
+  tableInstructorFilter.value = null;
+  tableEstadoFilter.value = null;
+};
+
+// Reinicia los filtros de la tabla cada vez que se entra a una ficha nueva
+watch(selectedPlanning, () => {
+  clearTableFilters();
+});
 
 // ── ACCIONES CORE DEL PROGRAMADOR ──
 
@@ -2289,19 +2149,6 @@ const confirmarProgramacionFinal = async () => {
   border-color: #ef5350 !important;
 }
 
-/* Ficha cards (grid replacing the sidebar list) */
-.ficha-card {
-  border-radius: 12px;
-  background: #ffffff;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.ficha-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  border-color: #66bb6a;
-}
-
 /* Scheduler Table Styling */
 .scheduler-table {
   width: 100%;
@@ -2324,11 +2171,24 @@ const confirmarProgramacionFinal = async () => {
 .scheduler-table td {
   padding: 12px 10px;
   border-bottom: 1px solid #eeeeee;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .scheduler-table tr:hover {
   background-color: #fafafa;
+}
+
+/* Tabla de fichas */
+.fichas-table tbody tr {
+  cursor: pointer;
+}
+
+.fichas-table td {
+  padding: 10px;
+}
+
+.fichas-table tbody tr:hover {
+  background-color: #f1f8e9;
 }
 
 .trimestre-table td {
@@ -2357,15 +2217,66 @@ const confirmarProgramacionFinal = async () => {
   animation: pulse 1.5s infinite;
 }
 
+/* Filtros dentro de los encabezados de la tabla */
+.th-filter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.th-filter-center {
+  justify-content: center;
+}
+
+.th-filter-btn {
+  color: #9e9e9e !important;
+  flex: 0 0 auto;
+  transition: color 0.15s ease;
+}
+
+.th-filter-btn:hover {
+  color: #616161 !important;
+}
+
+.th-filter-btn.is-active {
+  color: #2e7d32 !important;
+}
+
+:global(.th-filter-list) {
+  min-width: 190px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+:global(.th-filter-list-wide) {
+  min-width: 300px;
+  max-width: 380px;
+}
+
+:global(.th-filter-item-text) {
+  font-size: 12.5px;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+:global(.th-filter-selected) {
+  background: #f1f8e9;
+  color: #1b5e20;
+  font-weight: 600;
+}
+
 @keyframes pulse {
   0% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(21, 101, 192, 0.5);
   }
+
   70% {
     transform: scale(1);
     box-shadow: 0 0 0 10px rgba(21, 101, 192, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(21, 101, 192, 0);
@@ -2466,5 +2377,131 @@ const confirmarProgramacionFinal = async () => {
   font-size: 12px;
   line-height: 1.4;
   font-weight: 600;
+}
+
+.filters-card {
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.filters-container {
+  display: grid;
+  grid-template-columns: 1.4fr 1.3fr 1.4fr;
+  gap: 16px;
+  align-items: end;
+  width: 100%;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.filter-label {
+  height: 20px;
+  margin-bottom: 6px;
+  color: #666;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.filter-status {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+
+/* Altura y radio UNIFICADOS */
+.filter-control {
+  height: 44px !important;
+  min-height: 44px !important;
+
+  border-radius: 8px !important;
+  box-sizing: border-box;
+}
+
+.filter-search .q-field {
+  width: 100%;
+}
+
+.filter-search .q-field__control {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+}
+
+.filter-search .q-field__native {
+  font-size: 15px;
+}
+
+.filter-program .q-field {
+  width: 100%;
+}
+
+.filter-program .q-field__control {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+}
+
+.status-filter-wrap {
+  display: flex;
+  gap: 6px;
+  height: 44px;
+  align-items: center;
+}
+
+.status-filter-btn {
+  flex: 0 1 auto;
+  /* ya no se estiran a todo el ancho */
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 6px !important;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.status-filter-btn .q-btn__content {
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.status-filter-btn .q-icon {
+  font-size: 8px !important;
+}
+
+@media (max-width: 1024px) {
+  .filters-container {
+    grid-template-columns: 1fr 1.5fr;
+  }
+
+  .filter-search {
+    grid-column: span 1;
+  }
+
+  .filter-status {
+    grid-column: span 1;
+  }
+
+  .filter-program {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .filters-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-search,
+  .filter-status,
+  .filter-program {
+    grid-column: span 1;
+  }
 }
 </style>
