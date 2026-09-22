@@ -203,6 +203,218 @@ const hasOnlyDefaultEmptyActivities = (activities) => {
   return activities.length === 1 && isDefaultEmptyActivity(activities[0]);
 };
 
+// ── Helpers para evitar duplicados de actividades/RAPs en las fusiones ──
+
+/** Descripción normalizada de una actividad (para comparar duplicados) */
+const cleanDescKey = (act) => {
+  return ((act?.description || act?.observations) || '').trim().toUpperCase();
+};
+
+/** Firma de las fechas asignadas de una actividad (para detectar la misma programación) */
+const getActDaysSignature = (act) => {
+  const days = Array.isArray(act?.scheduleDetails?.assignedDays)
+    ? act.scheduleDetails.assignedDays
+    : [];
+  return [...days].map(String).sort().join('|');
+};
+
+/** Instructor sugerido de la actividad (soporta objeto único o arreglo) */
+const getActInstructor = (act) => {
+  const sugg = act?.suggestedInstructor || act?.instructors;
+  if (Array.isArray(sugg)) {
+    return sugg.find((s) => s && (s.name || s.id || s._id)) || sugg[0] || null;
+  }
+  return sugg || null;
+};
+
+const getActInstructorId = (act) => {
+  const inst = getActInstructor(act);
+  return inst ? String(inst.id || inst._id || '') : '';
+};
+
+const getActInstructorName = (act) => {
+  const sugg = act?.suggestedInstructor || act?.instructors;
+  if (Array.isArray(sugg)) return sugg.map((i) => i?.name).filter(Boolean).join(', ');
+  return sugg?.name || '';
+};
+
+/**
+ * Completa los campos que faltan en `target` con la información de `source`.
+ * NUNCA pisa instructor, horas ni programación ya establecidos.
+ */
+const mergeMissingActFields = (target, source) => {
+  if (!target || !source) return target;
+
+  if (isEmptyValue(target.description)) target.description = source.description;
+  if (isEmptyValue(target.observations)) target.observations = source.observations;
+
+  if (!getActInstructor(target) && getActInstructor(source)) {
+    target.suggestedInstructor = JSON.parse(JSON.stringify(source.suggestedInstructor || source.instructors));
+  }
+
+  if (!target.hours) target.hours = { direct: 0, independent: 0 };
+  if (isEmptyValue(target.hours.direct) && !isEmptyValue(source.hours?.direct)) target.hours.direct = source.hours.direct;
+  if (isEmptyValue(target.hours.independent) && !isEmptyValue(source.hours?.independent)) target.hours.independent = source.hours.independent;
+
+  const targetHasSchedule =
+    target.scheduleDetails &&
+    Array.isArray(target.scheduleDetails.assignedDays) &&
+    target.scheduleDetails.assignedDays.length > 0;
+  const sourceHasSchedule =
+    source.scheduleDetails &&
+    Array.isArray(source.scheduleDetails.assignedDays) &&
+    source.scheduleDetails.assignedDays.length > 0;
+  if (!targetHasSchedule && sourceHasSchedule) {
+    target.scheduleDetails = JSON.parse(JSON.stringify(source.scheduleDetails));
+    if (source.isScheduledInCalendar !== undefined) {
+      target.isScheduledInCalendar = source.isScheduledInCalendar;
+    }
+  }
+
+  // Conservar el estado de publicación si alguna de las copias estaba publicada
+  if (!target.isScheduledInCalendar && source.isScheduledInCalendar) {
+    target.isScheduledInCalendar = true;
+  }
+  if (
+    target.scheduleDetails
+    && !target.scheduleDetails.isPublished
+    && source.scheduleDetails?.isPublished
+  ) {
+    target.scheduleDetails.isPublished = true;
+  }
+
+  if (!target.environment) target.environment = { type: '', materials: [] };
+  const srcMats = source.environment?.materials || source.trainingMaterials || source.materials || [];
+  if ((!target.environment.materials || target.environment.materials.length === 0) && srcMats.length > 0) {
+    target.environment.materials = JSON.parse(JSON.stringify(srcMats));
+  }
+  if (isEmptyValue(target.environment.type)) {
+    target.environment.type = source.environment?.type || source.learningEnvironment || '';
+  }
+  delete target.materials;
+  delete target.trainingMaterials;
+  delete target.learningEnvironment;
+
+  if (!target.didacticStrategies || target.didacticStrategies.length === 0) {
+    target.didacticStrategies = JSON.parse(JSON.stringify(source.didacticStrategies || []));
+  }
+  if (!target.learningEvidences || target.learningEvidences.length === 0) {
+    target.learningEvidences = JSON.parse(JSON.stringify(source.learningEvidences || []));
+  }
+  if (isEmptyValue(target.reviewed)) target.reviewed = source.reviewed;
+
+  return target;
+};
+
+/**
+ * Elimina actividades duplicadas de un RAP:
+ *  - Las vacías por defecto sobran si hay otras con información.
+ *  - Dos actividades con las mismas fechas programadas y la misma
+ *    descripción (o ambas vacías) son la MISMA programación → se fusionan.
+ *  - Misma descripción cuando una de las dos está vacía → se fusionan.
+ */
+const isSameAct = (a, b) => {
+  const da = cleanDescKey(a);
+  const db = cleanDescKey(b);
+  const daysA = getActDaysSignature(a);
+  const daysB = getActDaysSignature(b);
+
+  // Misma programación: fechas iguales no vacías y misma descripción (o ambas vacías)
+  if (daysA !== '' && daysA === daysB && da === db) return true;
+
+  // Una vacía por defecto junto a otra con la misma descripción
+  if (da !== '' && da === db && (isDefaultEmptyActivity(a) || isDefaultEmptyActivity(b))) return true;
+
+  return false;
+};
+
+const dedupeRapActivities = (activities) => {
+  if (!Array.isArray(activities) || activities.length <= 1) return activities;
+
+  const withInfo = activities.filter((a) => !isDefaultEmptyActivity(a));
+  const base = withInfo.length > 0 ? withInfo : activities;
+
+  const merged = [];
+  for (const act of base) {
+    const dup = merged.find((m) => isSameAct(m, act));
+    if (dup) mergeMissingActFields(dup, act);
+    else merged.push(act);
+  }
+  return merged;
+};
+
+/** Quita el prefijo numérico de un RAP ("01- ", "02 ", "01.", etc.) */
+const stripRapNumberPrefix = (text) => {
+  if (!text) return '';
+  return String(text).replace(/^\s*\d{1,2}\s*[-–—.]?\s*/u, '').trim();
+};
+
+const rapIdentityKey = (rap) => {
+  const raw = rap?.description || '';
+  return {
+    plain: cleanTextForComparison(raw),
+    stripped: cleanTextForComparison(stripRapNumberPrefix(raw))
+  };
+};
+
+/**
+ * Determina si dos RAPs son el mismo resultado de aprendizaje.
+ * Cubre: igualdad exacta, diferencia solo por prefijo numérico ("01- "),
+ * alta similitud de texto (variaciones del OCR/extractor) y descripciones
+ * truncadas (una es prefijo de la otra, artefacto común del extractor).
+ */
+const isSameRap = (a, b) => {
+  const ra = rapIdentityKey(a);
+  const rb = rapIdentityKey(b);
+  if (!ra.plain || !rb.plain) return false;
+  if (ra.plain === rb.plain) return true;
+  if (ra.stripped && ra.stripped === rb.stripped) return true;
+  const sa = ra.stripped || ra.plain;
+  const sb = rb.stripped || rb.plain;
+  const shorter = sa.length <= sb.length ? sa : sb;
+  const longer = sa.length <= sb.length ? sb : sa;
+  if (shorter.length >= 25 && longer.startsWith(shorter)) return true;
+  return getSimilarity(sa, sb) >= 0.9;
+};
+
+/**
+ * Sanea el contenido completo de la planeación: fusiona RAPs duplicados
+ * (misma descripción, mismo texto sin prefijo numérico o alta similitud)
+ * y actividades duplicadas dentro de cada RAP.
+ */
+const sanitizePlanningContent = (content) => {
+  if (!Array.isArray(content)) return content;
+
+  for (const phase of content) {
+    if (!Array.isArray(phase.competencies)) continue;
+    for (const comp of phase.competencies) {
+      if (!Array.isArray(comp.learningOutcomes)) continue;
+      const uniqueRaps = [];
+      for (const rap of comp.learningOutcomes) {
+        const existing = uniqueRaps.find((r) => isSameRap(r, rap));
+        if (existing) {
+          // Conservar la descripción más completa (el extractor a veces
+          // deja versiones truncadas del mismo resultado)
+          if ((rap.description || '').length > (existing.description || '').length) {
+            existing.description = rap.description;
+          }
+          existing.pedagogicalActivities = dedupeRapActivities([
+            ...(existing.pedagogicalActivities || []),
+            ...(rap.pedagogicalActivities || []),
+          ]);
+        } else {
+          if (Array.isArray(rap.pedagogicalActivities)) {
+            rap.pedagogicalActivities = dedupeRapActivities(rap.pedagogicalActivities);
+          }
+          uniqueRaps.push(rap);
+        }
+      }
+      comp.learningOutcomes = uniqueRaps;
+    }
+  }
+  return content;
+};
+
 /**
  * Determina la ficha definitiva con la que se guardará la planeación.
  * Si el extractor no logró detectar la ficha desde el PDF del Equipo Ejecutor
@@ -299,9 +511,16 @@ const fillMissingIntoExistingPlanning = (existingPlanning, planningData) => {
 
       (inComp.learningOutcomes || []).forEach(inRap => {
         if (!inRap) return;
-        const exRap = (exComp.learningOutcomes || []).find(
+        let exRap = (exComp.learningOutcomes || []).find(
           r => (r.description || '').trim().toUpperCase() === (inRap.description || '').trim().toUpperCase()
         );
+
+        // Fallback robusto: reutilizar el RAP existente cuando la descripción
+        // coincide ignorando el prefijo numérico ("01- ", "02 ") o difiere
+        // ligeramente (tildes, puntuación, OCR). Evita duplicar resultados.
+        if (!exRap) {
+          exRap = (exComp.learningOutcomes || []).find((r) => isSameRap(r, inRap));
+        }
 
         if (!exRap) {
           if (!exComp.learningOutcomes) exComp.learningOutcomes = [];
@@ -326,24 +545,39 @@ const fillMissingIntoExistingPlanning = (existingPlanning, planningData) => {
             // existen actividades con información (asignaciones, horas, etc.)
             if (isDefaultEmptyActivity(inAct) && exActs.length > 0) return;
 
-            const inInstr = ((inAct.suggestedInstructor?.name || inAct.instructors?.name) || '').trim().toUpperCase();
-            const inDesc = ((inAct.description || inAct.observations) || '').trim().toUpperCase();
+            const inInstr = getActInstructorName(inAct).trim().toUpperCase();
+            const inDesc = cleanDescKey(inAct);
+            const inDays = getActDaysSignature(inAct);
 
+            // Se busca un par existente para COMPLETAR en vez de duplicar:
+            // 1) misma programación (mismas fechas + misma descripción o ambas vacías)
+            // 2) misma descripción y la entrante NO trae instructor (el
+            //    extractor no lo conoce): completa la actividad existente
+            // 3) misma descripción + mismo instructor
             const dup = exActs.find(a => {
-              const aDesc = ((a.description || a.observations) || '').trim().toUpperCase();
-              const aInstr = ((a.suggestedInstructor?.name || a.instructors?.name) || '').trim().toUpperCase();
-              return aDesc === inDesc && aInstr === inInstr;
+              const aDesc = cleanDescKey(a);
+              if (isSameAct(a, inAct)) return true;
+              if (inDesc === '' || aDesc !== inDesc) return false;
+              const aInstr = getActInstructorName(a).trim().toUpperCase();
+              if (inInstr === '') return true;
+              if (aInstr === inInstr) return true;
+              if (inDays !== '' && getActDaysSignature(a) === inDays) return true;
+              return false;
             });
 
-            if (!dup) {
+            if (dup) {
+              mergeMissingActFields(dup, inAct);
+            } else {
               exActs.push(JSON.parse(JSON.stringify(inAct)));
             }
           });
         }
 
         // completar materiales y ambiente en environment si estaban vacíos en actividades existentes
-        exActs.forEach((exAct, actIdx) => {
-          const correspondingInAct = inActs[actIdx] || inActs[0];
+        exActs.forEach((exAct) => {
+          const correspondingInAct =
+            inActs.find((inA) => cleanDescKey(inA) !== '' && cleanDescKey(inA) === cleanDescKey(exAct))
+            || inActs[0];
           if (correspondingInAct) {
             const inMats = correspondingInAct.environment?.materials || correspondingInAct.trainingMaterials || correspondingInAct.materials || [];
             if (!exAct.environment) exAct.environment = { type: '', materials: [] };
@@ -373,8 +607,219 @@ const fillMissingIntoExistingPlanning = (existingPlanning, planningData) => {
   });
 
   existing.content = existingContent;
+
+  // Saneamiento final: fusionar RAPs y actividades duplicados que hayan
+  // quedado de extracciones/fusiones anteriores.
+  sanitizePlanningContent(existing.content);
+
   if (!existing.timestamps) existing.timestamps = {};
   existing.timestamps.updatedAt = new Date();
+};
+
+/**
+ * Sincroniza el calendario oficial cuando una actividad ya publicada fue
+ * modificada en la planeación: REASIGNACIÓN de instructor o cambio de días.
+ * Inactiva el horario antiguo (generado desde el módulo de planeación) y
+ * crea el nuevo con el instructor y las fechas actuales.
+ * Se ejecuta tras guardar la planeación (uploadPlanning) comparando el
+ * contenido previo con el nuevo.
+ */
+const syncSchedulesForReassignedActivities = async (oldContent, newContent, pedagogicalPlanning) => {
+  if (!Array.isArray(oldContent) || !Array.isArray(newContent)) return;
+
+  // 1. Mapa de actividades previas: key -> { instructorId, days }
+  const collectActs = (content, map) => {
+    content.forEach((phase) => {
+      (phase?.competencies || []).forEach((comp) => {
+        (comp?.learningOutcomes || []).forEach((rap) => {
+          (rap?.pedagogicalActivities || []).forEach((act) => {
+            const key = `${comp.code || ''}||${cleanTextForComparison(rap.description)}||${cleanTextForComparison(act.description || act.observations)}`;
+            const days = Array.isArray(act.scheduleDetails?.assignedDays) ? act.scheduleDetails.assignedDays : [];
+            map.set(key, {
+              instructorId: getActInstructorId(act) || '',
+              days: [...days].map(String).sort(),
+            });
+          });
+        });
+      });
+    });
+  };
+
+  const oldActs = new Map();
+  collectActs(oldContent, oldActs);
+
+  // 2. Actividades publicadas cuyo instructor O fechas cambiaron respecto
+  //    al contenido previo guardado.
+  const changed = [];
+  newContent.forEach((phase) => {
+    (phase?.competencies || []).forEach((comp) => {
+      (comp?.learningOutcomes || []).forEach((rap) => {
+        (rap?.pedagogicalActivities || []).forEach((act) => {
+          const sugg = getActInstructor(act);
+          if (!sugg || !sugg.id) return;
+          if (!act.scheduleDetails?.isPublished && !act.isScheduledInCalendar) return;
+          const days = Array.isArray(act.scheduleDetails?.assignedDays) ? act.scheduleDetails.assignedDays : [];
+          if (days.length === 0) return;
+
+          const key = `${comp.code || ''}||${cleanTextForComparison(rap.description)}||${cleanTextForComparison(act.description || act.observations)}`;
+          const old = oldActs.get(key);
+          if (!old || !old.instructorId) return; // no había horario previo generado desde planeación
+
+          const sortedDays = [...days].map(String).sort();
+          const daysChanged = JSON.stringify(sortedDays) !== JSON.stringify(old.days);
+          const instructorChanged = String(old.instructorId) !== String(sugg.id);
+          if (!daysChanged && !instructorChanged) return;
+
+          changed.push({ phase, comp, rap, act, old });
+        });
+      });
+    });
+  });
+
+  if (changed.length === 0) return;
+
+  const ficheNumber = pedagogicalPlanning?.fiche;
+  if (!ficheNumber) return;
+
+  const dbFiche = await Fiche.findOne({ number: String(ficheNumber) });
+  if (!dbFiche) return;
+
+  const dbProgram = await Program.findOne({ code: pedagogicalPlanning?.metadata?.programCode });
+  if (!dbProgram) return;
+
+  const EnvironmentModel = (await import('../models/Environment.js')).default;
+
+  for (const { comp, rap, act, old } of changed) {
+    try {
+      // Resolver competencia en BD (misma lógica del módulo de programación)
+      let dbCompetence = await Competence.findOne({ number: comp.code });
+      if (!dbCompetence) {
+        const programCompetences = await Competence.find({ program: dbProgram._id });
+        let bestComp = null;
+        let bestSim = 0;
+        for (const c of programCompetences) {
+          const sim = getSimilarity(c.name, comp.name);
+          if (sim > bestSim) { bestSim = sim; bestComp = c; }
+        }
+        if (bestComp && bestSim >= 0.8) dbCompetence = bestComp;
+      }
+      if (!dbCompetence) {
+        const globalCompetences = await Competence.find({});
+        let bestComp = null;
+        let bestSim = 0;
+        for (const c of globalCompetences) {
+          const sim = getSimilarity(c.name, comp.name);
+          if (sim > bestSim) { bestSim = sim; bestComp = c; }
+        }
+        if (bestComp && bestSim >= 0.8) dbCompetence = bestComp;
+      }
+
+      // Resolver resultado de aprendizaje en BD
+      let dbOutcome = null;
+      if (dbCompetence && rap.description) {
+        dbOutcome = await Outcome.findOne({ outcomes: rap.description, competence: dbCompetence._id });
+        if (!dbOutcome) {
+          const competenceOutcomes = await Outcome.find({ competence: dbCompetence._id });
+          let bestOutcome = null;
+          let bestSim = 0;
+          for (const o of competenceOutcomes) {
+            const sim = getSimilarity(o.outcomes, rap.description);
+            if (sim > bestSim) { bestSim = sim; bestOutcome = o; }
+          }
+          if (bestOutcome && bestSim >= 0.8) dbOutcome = bestOutcome;
+        }
+      }
+
+      const days = act.scheduleDetails.assignedDays;
+      const events = days.map((d) => new Date(`${d}T00:00:00.000Z`));
+      const oldEvents = (old.days || []).map((d) => new Date(`${d}T00:00:00.000Z`));
+      const supportText = act.description || act.observations || 'PLANEACIÓN PEDAGÓGICA';
+
+      // 3. Inactivar el horario previo generado desde planeación
+      //    (por texto de soporte o por el rango de fechas ANTERIOR)
+      const inactivated = await Schedule.updateMany(
+        {
+          fiche: dbFiche._id,
+          ...(dbCompetence ? { competence: dbCompetence._id } : {}),
+          ...(dbOutcome ? { outcome: dbOutcome._id } : {}),
+          observation: 'Generado desde el módulo de planeación',
+          status: 0,
+          instructor: old.instructorId,
+          $or: [
+            { supporttext: supportText },
+            ...(oldEvents.length > 0
+              ? [{ fstart: oldEvents[0], fend: oldEvents[oldEvents.length - 1] }]
+              : []),
+            ...(events.length > 0
+              ? [{ fstart: events[0], fend: events[events.length - 1] }]
+              : []),
+          ],
+        },
+        { $set: { status: 1 } }
+      );
+
+      // Si no existía un horario generado desde planeación para inactivar,
+      // NO se crea uno nuevo (los horarios del módulo clásico se gestionan
+      // desde el propio módulo de horarios y no se tocan).
+      if (!inactivated || inactivated.matchedCount === 0) {
+        console.log(`[REASSIGN SYNC] Sin horario de planeación previo para "${supportText}" (ficha ${ficheNumber}). No se crea duplicado.`);
+        continue;
+      }
+
+      // 4. Crear el nuevo horario con el instructor reasignado
+      let tstart = '06:00';
+      let tend = '12:00';
+      if (act.scheduleDetails.shift === 'nocturna') { tstart = '18:00'; tend = '22:00'; }
+      else if (act.scheduleDetails.shift === 'diurna') { tstart = '06:00'; tend = '18:00'; }
+      else if (act.scheduleDetails.shift === 'mixta') { tstart = '06:00'; tend = '14:00'; }
+      if (act.scheduleDetails.tstart) tstart = act.scheduleDetails.tstart;
+      if (act.scheduleDetails.tend) tend = act.scheduleDetails.tend;
+
+      let envId = null;
+      if (act.environment?.type) {
+        const envName = act.environment.type.trim();
+        let dbEnv = await EnvironmentModel.findOne({ name: new RegExp(`^${escapeRegExp(envName)}$`, 'i') });
+        if (!dbEnv) {
+          const allEnvs = await EnvironmentModel.find({});
+          let bestEnv = null;
+          let bestSim = 0;
+          for (const e of allEnvs) {
+            const sim = getSimilarity(e.name, envName);
+            if (sim > bestSim) { bestSim = sim; bestEnv = e; }
+          }
+          if (bestEnv && bestSim >= 0.8) dbEnv = bestEnv;
+        }
+        if (dbEnv) envId = dbEnv._id;
+      }
+      if (!envId) {
+        const dbEnvFallback = await EnvironmentModel.findOne();
+        if (dbEnvFallback) envId = dbEnvFallback._id;
+      }
+
+      await Schedule.create({
+        fiche: dbFiche._id,
+        program: dbProgram._id,
+        competence: dbCompetence ? dbCompetence._id : undefined,
+        outcome: dbOutcome ? dbOutcome._id : undefined,
+        instructor: String(getActInstructor(act)?.id),
+        supporttext: supportText,
+        observation: 'Generado desde el módulo de planeación',
+        environment: envId,
+        days: [1, 2, 3, 4, 5],
+        fstart: events[0],
+        fend: events[events.length - 1],
+        tstart,
+        tend,
+        hourswork: act.hours?.direct || 0,
+        events,
+        scheduleType: 'TITULADA',
+      });
+
+      console.log(`[REASSIGN SYNC] Horario actualizado para "${supportText}" en ficha ${ficheNumber}: instructor ${old.instructorId} -> ${getActInstructor(act)?.id} | días ${(old.days || []).length} -> ${days.length}`);
+    } catch (err) {
+      console.error('[REASSIGN SYNC ERROR]', err.message);
+    }
+  }
 };
 
 export const uploadPlanning = async (req, res) => {
@@ -443,6 +888,9 @@ export const uploadPlanning = async (req, res) => {
     }
 
     const existingPlanning = await Planning.findOne({ 'pedagogicalPlanning.fiche': targetFiche });
+    const oldContent = existingPlanning
+      ? JSON.parse(JSON.stringify(existingPlanning.pedagogicalPlanning?.content || null))
+      : null;
     const oldConfirmedActs = existingPlanning ? getConfirmedActivities(existingPlanning.pedagogicalPlanning?.content) : new Map();
     const newConfirmedActs = getConfirmedActivities(pedagogicalPlanning.content);
 
@@ -573,12 +1021,33 @@ export const uploadPlanning = async (req, res) => {
       }
     } else {
       // Sobrescribir todo para administradores, coordinadores, programadores o si es una planeación nueva
+      // Saneamiento previo: eliminar RAPs/actividades duplicados que hayan
+      // quedado de fusiones o extracciones anteriores antes de guardar.
+      if (pedagogicalPlanning.content) {
+        sanitizePlanningContent(pedagogicalPlanning.content);
+      }
       pedagogicalPlanning.timestamps.updatedAt = new Date();
       planning = await Planning.findOneAndUpdate(
         { 'pedagogicalPlanning.fiche': targetFiche },
         { $set: { pedagogicalPlanning } },
         { upsert: true, new: true }
       );
+    }
+
+    // Sincronizar el calendario oficial cuando un instructor fue REASIGNADO en
+    // una actividad ya publicada: se inactiva el horario antiguo y se crea el
+    // nuevo (los instructores en safe merge nunca cambian instructores, así
+    // que la comparación no encuentra cambios en ese caso).
+    if (oldContent) {
+      try {
+        await syncSchedulesForReassignedActivities(
+          oldContent,
+          planning?.pedagogicalPlanning?.content || pedagogicalPlanning.content,
+          pedagogicalPlanning
+        );
+      } catch (syncErr) {
+        console.error('[REASSIGN SYNC ERROR]:', syncErr.message);
+      }
     }
 
     // Send detailed email notifications to newly confirmed instructors in the background
@@ -676,6 +1145,22 @@ export const getPlanningByFiche = async (req, res) => {
     const { fiche } = req.params;
     const planning = await Planning.findOne({ 'pedagogicalPlanning.fiche': fiche });
     if (!planning) return res.status(404).json({ message: 'No se encontró la planeación' });
+
+    // Auto-saneamiento: fusionar RAPs/actividades duplicados que hayan quedado
+    // de extracciones anteriores (se persiste únicamente si hubo cambios).
+    try {
+      if (planning?.pedagogicalPlanning?.content) {
+        const before = JSON.stringify(planning.pedagogicalPlanning.content);
+        sanitizePlanningContent(planning.pedagogicalPlanning.content);
+        if (JSON.stringify(planning.pedagogicalPlanning.content) !== before) {
+          planning.markModified('pedagogicalPlanning.content');
+          await planning.save();
+          console.log(`[GET PLANNING] Contenido saneado para ficha ${fiche}`);
+        }
+      }
+    } catch (healErr) {
+      console.error('[GET PLANNING] Error saneando contenido:', healErr.message);
+    }
 
     // Restricciones de seguridad por rol de instructor
     const token = req.headers.token || req.headers.authorization;
@@ -978,7 +1463,7 @@ export const extractFromPDFs = async (req, res) => {
             }
           }
 
-          const schedulesFound = await Schedule.find({ fiche: dbFiche._id })
+          const schedulesFound = await Schedule.find({ fiche: dbFiche._id, status: 0 })
             .populate("competence")
             .populate("outcome")
             .populate("instructor")
